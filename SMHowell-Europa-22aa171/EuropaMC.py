@@ -33,8 +33,8 @@ STEP 0: INPUTS AND COSNTANTS
 
 " Input Parameters "
 N = int(1e7) # Number of simulations
-doPlots = 0 # 1 = make and save pdf dpPlots. 0 = off.
-doStats = 0 # 1 = redo correlations (takes a long time). 0 = off.
+doPlots = True # 1 = make and save pdf dpPlots. 0 = off.
+doStats = True # 1 = redo correlations (takes a long time). 0 = off.
 
 " Physical Constants "
 R = 8.31 # Universal gas constant [J/mol MC.K]
@@ -599,9 +599,67 @@ D_BK_CBE = EMC.MCCBE(CBE,CBE_hi,CBE_lo,bins,P_BK_Full,n_cum)
 
 
 
+### ADDITIONS by Jake Sahli
+import pandas as pd
 
+europas_df = pd.DataFrame({
+        "D_tot" : MC.D_tot, # Total shell thickness
+        "D_cond" : MC.D_cond, # Thickness of conductive layer
+        # "D_min" : MC.D_min,
+        # "D_max" : MC.D_max,
+        "D_brittle" : MC.D_brittle, # Thickness of conductive porous layer (D_phi in the paper)
+        "D_conv" : MC.D_conv, # Thickness of convective layer
+        # "D_bnd" : MC.D_bnd,
+        # "D_H2O" : MC.D_H2O,
+        # "D_ocn" : MC.D_ocn,
+        # "D_rock" : MC.D_rock,
+        # "D_iron" : MC.D_iron,
+        "T_s" : MC.T_s, # Surface temperature
+        "T_c" : MC.T_c, # Isothermal temperature of convection
+        "T_phi" : MC.T_phi, # Temperature at base of porous outter layer
+        "T_m" : MC.T_m, # Melting temperature
+        "T_cond_base" : MC.T_cond_base, # Temperature at the base of the conductive layer
+        # "q_i" : MC.q_i,
+        # "q_ir" : MC.q_ir,
+        # "q_it" : MC.q_it,
+        # "q_c" : MC.q_c,
+        # "q_s" : MC.q_s,
+        # "dqc_dz" : MC.dqc_dz,
+        # "Q_ir" : MC.Q_ir,  
+        # "Pi" : MC.Pi,  
+        # "rho_cond" : MC.rho_cond,
+        # "rho_conv" : MC.rho_conv,
+        # "rho_ocn" : MC.rho_ocn,
+        # "rho_rock" : MC.rho_rock,
+        # "rho_iron" : MC.rho_iron,      
+        # "rho_s" : MC.rho_s,    
+        # "G_conv" : MC.G_conv,
+        # "G_cond" : MC.G_cond, 
+        # "d" : MC.d,
+        # "d_del" : MC.d_del,
+        # "eta_c" : MC.eta_c,
+        # "D0v" : MC.D0v,
+        # "D0b" : MC.D0b,
+        # "Qv" : MC.Qv,
+        # "Qb" : MC.Qb,
+        # "epsilon" : MC.epsilon, 
+        # "MoI" : MC.MoI,   
+        # "k2Q_in" : MC.k2Q_in,   
+        # "k2Q_out" : MC.k2Q_out,   
+        # "k2Q_lambda" : MC.k2Q_lambda,   
+        "f_s" : MC.f_s,     # upper icy shell salt fraction
+        # "B_k" : MC.B_k,
+        # "k_T" : MC.k_T,
+        # "k_Tp" : MC.k_Tp,
+        # "k_Tps" : MC.k_Tps,
+        # "K" : MC.K,
+        "phi" : MC.phi,   # upper icy shell porosity   
+        # "f_phi" : MC.f_phi,    
+    }
+)
+europas_df.to_csv('Europas.csv')
 
-
+### END ADDITIONS by Jake Sahli
 
 
 if not doStats:
