@@ -6,7 +6,6 @@ from scipy.constants import (
 )
 from scipy.special import loggamma, factorial, gamma
 from decimal import Decimal
-import decimal
 
 def transmissivity_fBm(
         f, epsilon_i_prime, epsilon_t_prime, sigma_A, H, 
