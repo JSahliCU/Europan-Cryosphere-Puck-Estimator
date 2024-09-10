@@ -38,16 +38,19 @@ class angle_grid:
         self.dtheta = dtheta
         self.dphi = dphi
 
-        self.theta_resample = np.arange(0, 180+dtheta, dtheta, dtype=int) # deg
-        self.phi_resample = np.arange(0, 360+dphi, dphi, dtype=int) # deg
+        self.dtheta_rad = np.deg2rad(dtheta)
+        self.dphi_rad = np.deg2rad(dphi)
 
-        self.phi_grid_resample, \
-            self.theta_grid_resample = \
-                np.meshgrid(self.phi_resample, self.theta_resample)
+        self.theta = np.arange(0, 180+dtheta, dtheta, dtype=int) # deg
+        self.phi = np.arange(0, 360+dphi, dphi, dtype=int) # deg
+
+        self.phi_grid, \
+            self.theta_grid = \
+                np.meshgrid(self.phi, self.theta)
         
     def get_angle_grid(self):
-        return self.theta_resample, self.phi_resample, \
-            self.phi_grid_resample, self.theta_grid_resample
+        return self.theta, self.phi, \
+            self.phi_grid, self.theta_grid
 
 def resample_course(T_B, return_grids=False):
     # Define the course theta and phi sampling grid
@@ -243,7 +246,7 @@ if __name__ == "__main__":
             T_Bv_high_band, T_Bh_high_band \
              = func()
         
-        # Set the global theta and phi to the course grid
+        # The course grid
         theta, phi, \
             phi_grid, theta_grid = angle_grid(10, 10).get_angle_grid()
 
