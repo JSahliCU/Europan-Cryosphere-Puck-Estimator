@@ -41,6 +41,10 @@ class angle_grid:
         self.dtheta_rad = np.deg2rad(dtheta)
         self.dphi_rad = np.deg2rad(dphi)
 
+        self.d_solid_angle = \
+            np.sin(self.dtheta_rad.flatten())[:, None] \
+                * self.dtheta_rad * self.dphi_rad
+
         self.theta = np.arange(0, 180+dtheta, dtheta, dtype=int) # deg
         self.phi = np.arange(0, 360+dphi, dphi, dtype=int) # deg
 
