@@ -78,22 +78,28 @@ def reflectivity_fBm(
                     + (k_i * np.sin(theta_s) * np.sin(phi_s))**2)
     eta_z = k_i * np.cos(theta_i) + k_i * np.cos(theta_s)
 
-    # Evaluate the fBm series
-    sum, terms_to_converge, accuracy_overflow = _evaluate_fBm_series(
-        sigma_A, H, 
-        eta_xy, eta_z,
-        tolerance,
-        decimal_precision,
-        max_n_convergence,
-        debug
-    )
+    if theta_i >= np.pi/2 or theta_s >= np.pi/2:
+        sum = 0
+        terms_to_converge = 0
+        accuracy_overflow = False
+        gamma_ab_s = 0
+    else:
+        # Evaluate the fBm series
+        sum, terms_to_converge, accuracy_overflow = _evaluate_fBm_series(
+            sigma_A, H, 
+            eta_xy, eta_z,
+            tolerance,
+            decimal_precision,
+            max_n_convergence,
+            debug
+        )
 
-    ## Calculate the reflectivity
-    F_ab = bistatic_scattering_coefficients(
-        epsilon_i_prime, epsilon_t_prime, theta_i, 
-        theta_s, phi_s, bistatic_polarization)
+        ## Calculate the reflectivity
+        F_ab = bistatic_scattering_coefficients(
+            epsilon_i_prime, epsilon_t_prime, theta_i, 
+            theta_s, phi_s, bistatic_polarization)
 
-    gamma_ab_s = (k_i**2 / np.cos(theta_i)) * np.abs(F_ab)**2 * (1 / (2*H)) * float(sum)
+        gamma_ab_s = (k_i**2 / np.cos(theta_i)) * np.abs(F_ab)**2 * (1 / (2*H)) * float(sum)
 
     if debug:
         return gamma_ab_s, sum, terms_to_converge, accuracy_overflow
@@ -207,7 +213,14 @@ def _evaluate_fBm_series(
                         + loggamma((n + 1) / H)
         
         delta_sum = Decimal(np.e)**Decimal(kernel)
-        sum += Decimal((-1**n)) * delta_sum
+        try:
+            sum += Decimal((-1**n)) * delta_sum
+        except(BaseException):
+            print(sigma_A, H, 
+                eta_xy, eta_z, sum, n, delta_sum)
+            import sys
+            sys.exit(-1)
+            
         delta_sum_list.append(kernel)
 
         if kernel > decimal_precision :

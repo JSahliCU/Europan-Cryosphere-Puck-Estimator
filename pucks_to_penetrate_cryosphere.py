@@ -167,35 +167,39 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
         T_Bh_ocean_high_band, T_Bv_ocean_high_band,
         ant.UHF_directivity_pattern_RHCP)
 
-    # # Calculate the downwelling noise stream including the upwelling noise stream reflection
-    # # Low band
-    # T_Bv_low_band_ref, T_Bh_low_band_ref = integrate_gamma_ab_and_T_Ba_i(
-    #     ag, T_Bv_d_low_band, T_Bh_d_low_band,
-    #     mm.low_band_f, eim.cryosphere_model_df['epsilon_s_prime'].values[0], 
-    #     1 , 
-    #     sigma_ref * (c/mm.low_band_f)**(H), H, 'reflection'
-    # )
-    # # High band
-    # T_Bv_high_band_ref, T_Bh_high_band_ref = integrate_gamma_ab_and_T_Ba_i(
-    #     ag, T_Bv_d_high_band, T_Bh_d_high_band,
-    #     mm.high_band_f, eim.cryosphere_model_df['epsilon_s_prime'].values[0], 
-    #     1, 
-    #     sigma_ref * (c/mm.high_band_f)**(H), H, 'reflection'
-    # )
+    # Calculate the downwelling noise stream including the upwelling noise stream reflection
+    # Low band
+    T_Bv_low_band_ref, T_Bh_low_band_ref = integrate_gamma_ab_and_T_Ba_i(
+        ag, T_Bv_d_low_band, T_Bh_d_low_band,
+        mm.low_band_f, eim.cryosphere_model_df['epsilon_s_prime'].values[0], 
+        1 , 
+        sigma_ref * (c/mm.low_band_f)**(H), H, 'reflection'
+    )
+    # High band
+    T_Bv_high_band_ref, T_Bh_high_band_ref = integrate_gamma_ab_and_T_Ba_i(
+        ag, T_Bv_d_high_band, T_Bh_d_high_band,
+        mm.high_band_f, eim.cryosphere_model_df['epsilon_s_prime'].values[0], 
+        1, 
+        sigma_ref * (c/mm.high_band_f)**(H), H, 'reflection'
+    )
 
-    # # Calculate the downwelling noise stream
-    # eim.cryosphere_model_df['T_A Downwelling Low Band (K)'], \
-    #     T_Bh_d_low_band, T_Bv_d_low_band = calc_welling_noise_stream(
-    #     'down', mm.low_band_f, eim, ag, 
-    #     T_Bh_low_band + T_Bh_low_band_ref, 
-    #     T_Bv_low_band + T_Bv_low_band_ref, 
-    #     ant.HF_directivity_pattern_RHCP)
-    # eim.cryosphere_model_df['T_A Downwelling High Band (K)'], \
-    #     T_Bh_d_high_band, T_Bv_d_high_band = calc_welling_noise_stream(
-    #     'down', mm.high_band_f, eim, ag, 
-    #     T_Bh_high_band + T_Bh_high_band_ref, 
-    #     T_Bv_high_band + T_Bv_high_band_ref, 
-    #     ant.UHF_directivity_pattern_RHCP)
+    T_Bv_low_band_ref = T_Bv_low_band_ref.reshape(ag.theta_grid.shape) 
+    T_Bh_low_band_ref = T_Bh_low_band_ref.reshape(ag.theta_grid.shape) 
+    T_Bv_high_band_ref = T_Bv_high_band_ref.reshape(ag.theta_grid.shape) 
+    T_Bh_high_band_ref = T_Bh_high_band_ref.reshape(ag.theta_grid.shape) 
+
+    eim.cryosphere_model_df['T_A Downwelling Low Band (K)'], \
+        T_Bh_d_low_band, T_Bv_d_low_band = calc_welling_noise_stream(
+        'down', mm.low_band_f, eim, ag, 
+        T_Bh_low_band + T_Bh_low_band_ref, 
+        T_Bv_low_band + T_Bv_low_band_ref, 
+        ant.HF_directivity_pattern_RHCP)
+    eim.cryosphere_model_df['T_A Downwelling High Band (K)'], \
+        T_Bh_d_high_band, T_Bv_d_high_band = calc_welling_noise_stream(
+        'down', mm.high_band_f, eim, ag, 
+        T_Bh_high_band + T_Bh_high_band_ref, 
+        T_Bv_high_band + T_Bv_high_band_ref, 
+        ant.UHF_directivity_pattern_RHCP)
 
     # ------- Now estimate the puck placements -----------
     high_band_antenna = uhf_antenna()
@@ -700,4 +704,10 @@ def probability_of_error_for_MFSK(CNR_per_bit, N):
         return np.e**(-1 * N * ((np.sqrt(CNR_per_bit) - np.sqrt(np.log(2)))**2))
 
 if __name__ == "__main__":
-    print(evaluate_number_of_pucks_on_arbitrary_europa())
+    import time
+    start_time = time.time()
+    hf_number_of_pucks, uhf_number_of_pucks =\
+        evaluate_number_of_pucks_on_arbitrary_europa()
+    print(f'HF Pucks {hf_number_of_pucks} and UHF pucks {uhf_number_of_pucks}')
+    print("--- %s seconds ---" % (time.time() - start_time))
+    
