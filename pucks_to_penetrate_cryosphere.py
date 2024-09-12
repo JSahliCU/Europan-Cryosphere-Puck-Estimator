@@ -64,6 +64,7 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
     ant = antenna()
 
     ag = angle_grid(10, 10)
+
     # Evaluation of the sub-Jovian point on Europa
     # Rotate the brightness field pattern so we are standing on the sub-jovian point
     brightness_field_of_europan_sky_vertical_low_band, \
@@ -75,127 +76,56 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
     # Integrate the transmitted field by summing to find transmitted field over all incident fields
     # Low band
     T_Bv_low_band, T_Bh_low_band = integrate_gamma_ab_and_T_Ba_i(
-        brightness_field_of_europan_sky_vertical_low_band, 
+        ag, brightness_field_of_europan_sky_vertical_low_band, 
         brightness_field_of_europan_sky_horizontal_low_band,
         mm.low_band_f, 1, 
         eim.cryosphere_model_df['epsilon_s_prime'].values[0], 
-        sigma_ref * (c/mm.low_band_f)**(H), H
+        sigma_ref * (c/mm.low_band_f)**(H), H, 'transmission'
     )
     # High band
     T_Bv_high_band, T_Bh_high_band = integrate_gamma_ab_and_T_Ba_i(
-        brightness_field_of_europan_sky_vertical_high_band, 
+        ag, brightness_field_of_europan_sky_vertical_high_band, 
         brightness_field_of_europan_sky_horizontal_high_band,
         mm.high_band_f, 1, 
         eim.cryosphere_model_df['epsilon_s_prime'].values[0], 
-        sigma_ref * (c/mm.high_band_f)**(H), H
+        sigma_ref * (c/mm.high_band_f)**(H), H, 'transmission'
     )
 
+    T_Bv_low_band = T_Bv_low_band.reshape(ag.theta_grid.shape) 
+    T_Bh_low_band = T_Bh_low_band.reshape(ag.theta_grid.shape) 
+    T_Bv_high_band = T_Bv_high_band.reshape(ag.theta_grid.shape) 
+    T_Bh_high_band = T_Bh_high_band.reshape(ag.theta_grid.shape) 
+
     # Calculate the downwelling noise stream
-    path_loss_pattern_high_band = np.ones_like(
-        brightness_field_of_europan_sky_horizontal_low_band.flatten())
-    path_loss_pattern_low_band = np.ones_like(
-        brightness_field_of_europan_sky_horizontal_low_band.flatten())
-    T_A_low_band = np.zeros(len(eim.cryosphere_model_df))
-    T_A_high_band = np.zeros(len(eim.cryosphere_model_df))
-
-    brightness_temperature_horizontal_low_band_at_depth = T_Bh_low_band.copy()
-    brightness_temperature_vertical_low_band_at_depth = T_Bv_low_band.copy()
-    brightness_temperature_horizontal_high_band_at_depth = T_Bh_high_band.copy()
-    brightness_temperature_vertical_high_band_at_depth = T_Bv_high_band.copy()
-
-    delta_path_loss_high_band = np.ones_like(
-        brightness_field_of_europan_sky_horizontal_low_band.flatten())
-    delta_path_loss_low_band = np.ones_like(
-        brightness_field_of_europan_sky_horizontal_low_band.flatten())
-
-    for d in np.arange(len(eim.cryosphere_model_df)):
-        epsilon_s_prime = eim.cryosphere_model_df.loc[d]['epsilon_s_prime']
-        epsilon_s_primeprime = eim.cryosphere_model_df.loc[d]['epsilon_s_primeprime']
-        sigma_s = eim.cryosphere_model_df.loc[d]['sigma_s']
-        temperature_ice = eim.cryosphere_model_df.loc[d]['Temperature (K)']
-        for t in np.arange(ant.UHF_directivity_pattern_RHCP.size):
-            theta_t = theta_t_values[t]
-            phi_t = phi_t_values[t]
-
-            alpha_high_band = calc_path_loss(mm.high_band_omega, epsilon_s_prime, epsilon_s_primeprime, sigma_s)
-            alpha_low_band = calc_path_loss(mm.low_band_omega, epsilon_s_prime, epsilon_s_primeprime, sigma_s)
-
-            exp_numerator_high_band = -2 * (eim.delta_d / np.abs(np.cos(theta_t))) * alpha_high_band
-            exp_numerator_low_band = -2 * (eim.delta_d / np.abs(np.cos(theta_t))) * alpha_low_band
-
-            if theta_t != np.pi / 2 and theta_t != 3 * np.pi /2:
-                delta_path_loss_high_band[t] = 1 - np.e**(exp_numerator_high_band)
-                delta_path_loss_low_band[t] = 1 - np.e**(exp_numerator_low_band)
-            else: # Limit of the exponential function above when theta_t is 90 degrees
-                path_loss_pattern_high_band[t] = 1
-                path_loss_pattern_low_band[t] = 1
-
-        if d > 0:
-            brightness_temperature_horizontal_low_band_at_depth += \
-                -1 * delta_path_loss_low_band.reshape(ant.UHF_directivity_pattern_RHCP.shape) \
-                    * brightness_temperature_horizontal_low_band_at_depth \
-                        - 0.5*exp_numerator_low_band * temperature_ice
-            brightness_temperature_vertical_low_band_at_depth += \
-                -1 * delta_path_loss_low_band.reshape(ant.UHF_directivity_pattern_RHCP.shape) \
-                    * brightness_temperature_vertical_low_band_at_depth \
-                        - 0.5*exp_numerator_low_band * temperature_ice
-            brightness_temperature_horizontal_high_band_at_depth += \
-                -1 * delta_path_loss_high_band.reshape(ant.UHF_directivity_pattern_RHCP.shape) \
-                    * brightness_temperature_horizontal_high_band_at_depth      \
-                        - 0.5*exp_numerator_high_band * temperature_ice    
-            brightness_temperature_vertical_high_band_at_depth += \
-                -1 * delta_path_loss_high_band.reshape(ant.UHF_directivity_pattern_RHCP.shape) \
-                    * brightness_temperature_vertical_high_band_at_depth \
-                        - 0.5*exp_numerator_high_band * temperature_ice 
-
-        # Integrate over antenna directivity to get antenna temperature
-        directivity_RHCP_high_band = ant.UHF_directivity_pattern_RHCP
-        temp = (brightness_temperature_horizontal_high_band_at_depth \
-            + brightness_temperature_vertical_high_band_at_depth).reshape(directivity_RHCP_high_band.shape) * directivity_RHCP_high_band \
-            * np.sin(np.abs(theta_t_values.reshape(directivity_RHCP_high_band.shape)))
-        temp = scipy.integrate.simpson(
-            temp, 
-            x=phi_t_values.reshape(directivity_RHCP_high_band.shape))
-        T_A_high_band[d] = (1 / (4 * np.pi)) * scipy.integrate.simpson(
-            temp, 
-            x=theta_t_values.reshape(directivity_RHCP_high_band.shape)[:,0])
-
-        directivity_RHCP_low_band = ant.HF_directivity_pattern_RHCP
-        temp = (brightness_temperature_horizontal_low_band_at_depth \
-            + brightness_temperature_vertical_low_band_at_depth).reshape(directivity_RHCP_low_band.shape) * directivity_RHCP_low_band \
-            * np.sin(np.abs(theta_t_values.reshape(directivity_RHCP_low_band.shape)))
-        temp = scipy.integrate.simpson(
-            temp, 
-            x=phi_t_values.reshape(directivity_RHCP_low_band.shape))
-        T_A_low_band[d] = (1 / (4 * np.pi)) * scipy.integrate.simpson(
-            temp, 
-            x=theta_t_values.reshape(directivity_RHCP_low_band.shape)[:,0])
-
-    eim.cryosphere_model_df['T_A Downwelling Low Band (K)'] = T_A_low_band
-    eim.cryosphere_model_df['T_A Downwelling High Band (K)'] = T_A_high_band
+    eim.cryosphere_model_df['T_A Downwelling Low Band (K)'], \
+        T_Bh_d_low_band, T_Bv_d_low_band = calc_welling_noise_stream(
+        'down', mm.low_band_f, eim, ag, T_Bh_low_band, T_Bv_low_band, ant.HF_directivity_pattern_RHCP)
+    eim.cryosphere_model_df['T_A Downwelling High Band (K)'], \
+        T_Bh_d_high_band, T_Bv_d_high_band = calc_welling_noise_stream(
+        'down', mm.high_band_f, eim, ag, T_Bh_high_band, T_Bv_high_band, ant.UHF_directivity_pattern_RHCP)
 
     # Estimate of the oceans emissivity using reflection
     epsilon_ocean_prime = 77 # Roger Lang
     epsilon_ocean_primeprime = 48
 
-    theta_t_values = ant.theta_grid.flatten()
-    phi_t_values = ant.phi_grid.flatten()
+    theta_t_values = ag.theta_grid.flatten()
+    phi_t_values = ag.phi_grid.flatten()
 
-    theta_i_values = ant.theta_grid.flatten()
-    phi_i_values = ant.phi_grid.flatten()
+    theta_i_values = ag.theta_grid.flatten()
+    phi_i_values = ag.phi_grid.flatten()
 
     n_i = np.sqrt(eim.cryosphere_model_df.iloc[-1]['epsilon_s_prime'] * epsilon_0 * mu_0)
     n_t = np.sqrt(epsilon_ocean_prime * epsilon_0 * mu_0)
 
-    R_v = np.zeros_like(ant.theta_grid).flatten()
-    R_h = np.zeros_like(ant.theta_grid).flatten()
+    R_v = np.zeros_like(ag.theta_grid).flatten()
+    R_h = np.zeros_like(ag.theta_grid).flatten()
 
     #Lambertian reflection if you'd like to use that instead
-    for t in np.arange(ant.UHF_directivity_pattern_RHCP.size):
+    for t in np.arange(ag.theta_grid.size):
         theta_t = theta_t_values[t]
         phi_t = phi_t_values[t]
 
-        for i in np.arange(ant.UHF_directivity_pattern_RHCP.size):
+        for i in np.arange(ag.theta_grid.size):
             theta_i = theta_t_values[i]
             phi_i = phi_t_values[i]
 
@@ -204,7 +134,7 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
             R_h[i] += np.cos(theta_t)*np.cos(theta_i)
             
     # # Specular reflection code in case you want to change over to that
-    # for i in np.arange(ant.UHF_directivity_pattern_RHCP.size):
+    # for i in np.arange(ag.theta_grid.size):
     #     theta_i = theta_t_values[i]
     #     phi_i = phi_t_values[i]
 
@@ -214,97 +144,60 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
     #     R_h[i] += (n_i * np.sqrt(1 - (n_i * np.sin(theta_i) / n_t)**2) - n_t * np.cos(theta_i)) \
     #         / (n_i * np.sqrt(1 - (n_i * np.sin(theta_i) / n_t)**2) + n_t * np.cos(theta_i))
 
-    emissivity_ocean_v = np.abs(1 - R_v**2)
-    emissivity_ocean_h = np.abs(1 - R_h**2)
+    R_v = R_v.reshape(ag.theta_grid.shape)
+    R_h = R_h.reshape(ag.theta_grid.shape)
 
-    T_ocean = 273 # K
+    emissivity_ocean_v = (1 - R_v**2)
+    emissivity_ocean_h = (1 - R_h**2)
 
-    # Repeat for the upwelling noise stream
+    T_Bv_ocean_low_band = (emissivity_ocean_v*T_melt) + R_v**2 * T_Bv_d_low_band
+    T_Bh_ocean_low_band = (emissivity_ocean_h*T_melt) + R_h**2 * T_Bh_d_low_band
+    T_Bv_ocean_high_band = (emissivity_ocean_v*T_melt) + R_v**2 * T_Bv_d_high_band
+    T_Bh_ocean_high_band = (emissivity_ocean_h*T_melt) + R_h**2 * T_Bh_d_high_band
 
-    path_loss_pattern_high_band = np.ones_like(
-        brightness_field_of_europan_sky_horizontal_low_band.flatten())
-    path_loss_pattern_low_band = np.ones_like(
-        brightness_field_of_europan_sky_horizontal_low_band.flatten())
-    T_A_low_band = np.zeros(len(eim.cryosphere_model_df))
-    T_A_high_band = np.zeros(len(eim.cryosphere_model_df))
+    # Calculate the upwelling noise stream
+    eim.cryosphere_model_df['T_A Upwelling Low Band (K)'], \
+        T_Bh_d_low_band, T_Bv_d_low_band = calc_welling_noise_stream(
+        'up', mm.low_band_f, eim, ag, 
+        T_Bh_ocean_low_band , T_Bv_ocean_low_band ,
+        ant.HF_directivity_pattern_RHCP)
+    eim.cryosphere_model_df['T_A Upwelling High Band (K)'], \
+        T_Bh_d_high_band, T_Bv_d_high_band = calc_welling_noise_stream(
+        'up', mm.high_band_f, eim, ag, 
+        T_Bh_ocean_high_band, T_Bv_ocean_high_band,
+        ant.UHF_directivity_pattern_RHCP)
 
-    brightness_temperature_horizontal_upwelling_low_band_at_depth = (emissivity_ocean_h*T_ocean).reshape(directivity_RHCP_high_band.shape)
-    brightness_temperature_vertical_upwelling_low_band_at_depth = (emissivity_ocean_v*T_ocean).reshape(directivity_RHCP_high_band.shape)
-    brightness_temperature_horizontal_upwelling_high_band_at_depth = (emissivity_ocean_h*T_ocean).reshape(directivity_RHCP_high_band.shape)
-    brightness_temperature_vertical_upwelling_high_band_at_depth = (emissivity_ocean_v*T_ocean).reshape(directivity_RHCP_high_band.shape)
+    # # Calculate the downwelling noise stream including the upwelling noise stream reflection
+    # # Low band
+    # T_Bv_low_band_ref, T_Bh_low_band_ref = integrate_gamma_ab_and_T_Ba_i(
+    #     ag, T_Bv_d_low_band, T_Bh_d_low_band,
+    #     mm.low_band_f, eim.cryosphere_model_df['epsilon_s_prime'].values[0], 
+    #     1 , 
+    #     sigma_ref * (c/mm.low_band_f)**(H), H, 'reflection'
+    # )
+    # # High band
+    # T_Bv_high_band_ref, T_Bh_high_band_ref = integrate_gamma_ab_and_T_Ba_i(
+    #     ag, T_Bv_d_high_band, T_Bh_d_high_band,
+    #     mm.high_band_f, eim.cryosphere_model_df['epsilon_s_prime'].values[0], 
+    #     1, 
+    #     sigma_ref * (c/mm.high_band_f)**(H), H, 'reflection'
+    # )
 
-    delta_path_loss_high_band = np.ones_like(
-        brightness_field_of_europan_sky_horizontal_low_band.flatten())
-    delta_path_loss_low_band = np.ones_like(
-        brightness_field_of_europan_sky_horizontal_low_band.flatten())
+    # # Calculate the downwelling noise stream
+    # eim.cryosphere_model_df['T_A Downwelling Low Band (K)'], \
+    #     T_Bh_d_low_band, T_Bv_d_low_band = calc_welling_noise_stream(
+    #     'down', mm.low_band_f, eim, ag, 
+    #     T_Bh_low_band + T_Bh_low_band_ref, 
+    #     T_Bv_low_band + T_Bv_low_band_ref, 
+    #     ant.HF_directivity_pattern_RHCP)
+    # eim.cryosphere_model_df['T_A Downwelling High Band (K)'], \
+    #     T_Bh_d_high_band, T_Bv_d_high_band = calc_welling_noise_stream(
+    #     'down', mm.high_band_f, eim, ag, 
+    #     T_Bh_high_band + T_Bh_high_band_ref, 
+    #     T_Bv_high_band + T_Bv_high_band_ref, 
+    #     ant.UHF_directivity_pattern_RHCP)
 
-    # Iterate from the deepest depth upward
-    for d in np.flip(np.arange(len(eim.cryosphere_model_df))):
-        epsilon_s_prime = eim.cryosphere_model_df.loc[d]['epsilon_s_prime']
-        epsilon_s_primeprime = eim.cryosphere_model_df.loc[d]['epsilon_s_primeprime']
-        sigma_s = eim.cryosphere_model_df.loc[d]['sigma_s']
-        temperature_ice = eim.cryosphere_model_df.loc[d]['Temperature (K)']
-        for t in np.arange(ant.UHF_directivity_pattern_RHCP.size):
-            theta_t = theta_t_values[t]
-            phi_t = phi_t_values[t]
-
-            alpha_high_band = calc_path_loss(mm.high_band_omega, epsilon_s_prime, epsilon_s_primeprime, sigma_s)
-            alpha_low_band = calc_path_loss(mm.low_band_omega, epsilon_s_prime, epsilon_s_primeprime, sigma_s)
-
-            exp_numerator_high_band = -2 * (eim.delta_d / np.abs(np.cos(theta_t))) * alpha_high_band
-            exp_numerator_low_band = -2 * (eim.delta_d / np.abs(np.cos(theta_t))) * alpha_low_band
-
-            if theta_t != np.pi / 2 and theta_t != 3 * np.pi /2:
-                delta_path_loss_high_band[t] = 1 - np.e**(exp_numerator_high_band)
-                delta_path_loss_low_band[t] = 1 - np.e**(exp_numerator_low_band)
-            else: # Limit of the exponential function above when theta_t is 90 degrees
-                path_loss_pattern_high_band[t] = 1
-                path_loss_pattern_low_band[t] = 1
-
-        if d < len(eim.cryosphere_model_df)-1:
-            brightness_temperature_horizontal_upwelling_low_band_at_depth += \
-                -1 * delta_path_loss_low_band.reshape(ant.UHF_directivity_pattern_RHCP.shape) \
-                    * brightness_temperature_horizontal_upwelling_low_band_at_depth \
-                        - 0.5*exp_numerator_low_band * temperature_ice
-            brightness_temperature_vertical_upwelling_low_band_at_depth += \
-                -1 * delta_path_loss_low_band.reshape(ant.UHF_directivity_pattern_RHCP.shape) \
-                    * brightness_temperature_vertical_upwelling_low_band_at_depth \
-                        - 0.5*exp_numerator_low_band * temperature_ice
-            brightness_temperature_horizontal_upwelling_high_band_at_depth += \
-                -1 * delta_path_loss_high_band.reshape(ant.UHF_directivity_pattern_RHCP.shape) \
-                    * brightness_temperature_horizontal_upwelling_high_band_at_depth      \
-                        - 0.5*exp_numerator_high_band * temperature_ice    
-            brightness_temperature_vertical_upwelling_high_band_at_depth += \
-                -1 * delta_path_loss_high_band.reshape(ant.UHF_directivity_pattern_RHCP.shape) \
-                    * brightness_temperature_vertical_upwelling_high_band_at_depth \
-                        - 0.5*exp_numerator_high_band * temperature_ice 
-
-        # Integrate over antenna directivity to get antenna temperature
-        directivity_RHCP_high_band = ant.UHF_directivity_pattern_RHCP
-        temp = (brightness_temperature_horizontal_upwelling_high_band_at_depth \
-            + brightness_temperature_vertical_upwelling_high_band_at_depth).reshape(directivity_RHCP_high_band.shape) * directivity_RHCP_high_band \
-            * np.sin(np.abs(theta_t_values.reshape(directivity_RHCP_high_band.shape)))
-        temp = scipy.integrate.simpson(
-            temp, 
-            x=phi_t_values.reshape(directivity_RHCP_high_band.shape))
-        T_A_high_band[d] = (1 / (4 * np.pi)) * scipy.integrate.simpson(
-            temp, 
-            x=theta_t_values.reshape(ant.UHF_directivity_pattern_RHCP.shape)[:,0])
-
-        directivity_RHCP_low_band = ant.HF_directivity_pattern_RHCP
-        temp = (brightness_temperature_horizontal_upwelling_low_band_at_depth \
-            + brightness_temperature_vertical_upwelling_low_band_at_depth).reshape(directivity_RHCP_low_band.shape) * directivity_RHCP_low_band \
-            * np.sin(np.abs(theta_t_values.reshape(directivity_RHCP_low_band.shape)))
-        temp = scipy.integrate.simpson(
-            temp, 
-            x=phi_t_values.reshape(directivity_RHCP_low_band.shape))
-        T_A_low_band[d] = (1 / (4 * np.pi)) * scipy.integrate.simpson(
-            temp, 
-            x=theta_t_values.reshape(ant.HF_directivity_pattern_RHCP.shape)[:,0])
-
-    eim.cryosphere_model_df['T_A Upwelling Low Band (K)'] = T_A_low_band
-    eim.cryosphere_model_df['T_A Upwelling High Band (K)'] = T_A_high_band
-
+    # ------- Now estimate the puck placements -----------
     high_band_antenna = uhf_antenna()
     low_band_antenna = hf_antenna()
 
@@ -344,15 +237,6 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
     noise_powers = [noise_power_upper_puck]
     attenuations = [attenuation]
     meter_distance_per_waves = [meter_distance_per_wave]
-
-    # Bit error rate for MFSK with N bits
-    def probability_of_error_for_MFSK(CNR_per_bit, N):
-        if 10*np.log10(CNR_per_bit) > 15:
-            return 10**-40
-        elif CNR_per_bit > 4*np.log(2):
-            return np.e**(-(N/2) * (CNR_per_bit - 2 * np.log(2)))
-        else:
-            return np.e**(-1 * N * ((np.sqrt(CNR_per_bit) - np.sqrt(np.log(2)))**2))
         
     for d in np.arange(len(eim.cryosphere_model_df)):
         epsilon_s_prime = eim.cryosphere_model_df.loc[d]['epsilon_s_prime']
@@ -468,15 +352,6 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
     attenuations = [attenuation]
     meter_distance_per_waves = [meter_distance_per_wave]
 
-    # Bit error rate for MFSK with N bits
-    def probability_of_error_for_MFSK(CNR_per_bit, N):
-        if 10*np.log10(CNR_per_bit) > 15:
-            return 10**-40
-        elif CNR_per_bit > 4*np.log(2):
-            return np.e**(-(N/2) * (CNR_per_bit - 2 * np.log(2)))
-        else:
-            return np.e**(-1 * N * ((np.sqrt(CNR_per_bit) - np.sqrt(np.log(2)))**2))
-        
     for d in np.arange(len(eim.cryosphere_model_df)):
         epsilon_s_prime = eim.cryosphere_model_df.loc[d]['epsilon_s_prime']
         epsilon_s_primeprime = eim.cryosphere_model_df.loc[d]['epsilon_s_primeprime']
@@ -558,8 +433,15 @@ def calc_path_loss(omega, epsilon_s_prime, epsilon_s_primeprime, sigma_s):
 
 def calc_gamma_ab(
     ag, f, epsilon_i_prime, epsilon_t_prime, 
-    sigma, H, bistatic_polarization):
+    sigma, H, bistatic_polarization, torr):
 
+    if torr == 'transmission':
+        fBm_func = transmissivity_fBm
+    elif torr == 'reflection':
+        fBm_func = reflectivity_fBm
+    else:
+        raise ValueError('torr must be set to reflection or transmission')
+    
     flat_shape = ag.theta_grid.flatten().shape[0]
     twoD_shape = ag.theta_grid.shape
 
@@ -575,29 +457,22 @@ def calc_gamma_ab(
             for i in np.arange(twoD_shape[0]):
                 theta_i = theta_i_values[i]
                 if theta_i < np.pi/2:
-                    gamma_ab[t, i] = np.nan_to_num(transmissivity_fBm(
-                            f = f, # Hz
-                            epsilon_i_prime = epsilon_i_prime,
-                            epsilon_t_prime = epsilon_t_prime,
-                            sigma_A = sigma,
-                            H = H,
-                            theta_i = theta_i,
-                            theta_t = np.pi - theta_t,
-                            phi_t = phi_t,
-                            bistatic_polarization= bistatic_polarization
+                    gamma_ab[t, i] = np.nan_to_num(fBm_func(
+                            f, epsilon_i_prime, epsilon_t_prime, sigma, H,
+                            theta_i, np.pi - theta_t, phi_t, bistatic_polarization
                         ))
     return gamma_ab
 
 def integrate_gamma_ab_and_T_Ba_i(
         ag, T_Bv_i, T_Bh_i,
         f, epsilon_i_prime, epsilon_t_prime, 
-        sigma, H):
+        sigma, H, torr):
 
     d_solid_angle = ag.d_solid_angle[None, :, :]
 
     gamma_ab_helper = lambda x: calc_gamma_ab(
         ag, f, epsilon_i_prime, epsilon_t_prime, 
-        sigma, H, x
+        sigma, H, x, torr
     )
     # The gamma_ab function returns a function thats 
     # flattened along the transmitted angle grid
@@ -627,6 +502,62 @@ def integrate_gamma_ab_and_T_Ba_i(
 
     return T_Bv, T_Bh
 
+def calc_welling_noise_stream(
+        direction, f, eim, ag, T_Bh, T_Bv, directivity_RHCP):
+    
+    if direction == 'down':
+        depth_list = np.arange(len(eim.cryosphere_model_df))
+    elif direction == 'up':
+        depth_list = np.flip(np.arange(len(eim.cryosphere_model_df)))
+    else:
+        raise(ValueError('direction needs to be \'up\' or \'down\''))
+
+    T_A = np.zeros(len(depth_list))
+
+    T_Bh_d = T_Bh.copy()
+    T_Bv_d = T_Bv.copy()
+
+    delta_path_loss = np.ones(ag.theta.shape)
+
+    exp_numerator = np.ones(ag.theta.shape)
+    for d in depth_list:
+        epsilon_s_prime = eim.cryosphere_model_df.loc[d]['epsilon_s_prime']
+        epsilon_s_primeprime = eim.cryosphere_model_df.loc[d]['epsilon_s_primeprime']
+        sigma_s = eim.cryosphere_model_df.loc[d]['sigma_s']
+        temperature_ice = eim.cryosphere_model_df.loc[d]['Temperature (K)']
+        alpha = calc_path_loss(f, epsilon_s_prime, epsilon_s_primeprime, sigma_s)
+        
+        # The loss is symmetric in phi by homogenous layer assumption
+        for t in np.arange(len(ag.theta)):
+            theta_t = np.deg2rad(ag.theta[t])
+            if theta_t < np.pi/2:
+                exp_numerator[t] = -2 * (eim.delta_d / np.abs(np.cos(theta_t))) * alpha    
+                delta_path_loss[t] = 1 - np.e**(exp_numerator[t])
+            else: # if we are looking down, set the TA contribution of this depth to 0
+                exp_numerator[t] = 0
+                delta_path_loss[t] = 0
+        
+        # Accumulate ice contribution and loss
+        if d > 0:
+            T_Bh_d += \
+                -1 * delta_path_loss[:, None] * T_Bh_d \
+                    - exp_numerator[:, None] * temperature_ice
+            T_Bv_d += \
+                -1 * delta_path_loss[:, None] * T_Bv_d \
+                    - exp_numerator[:, None] * temperature_ice
+
+        # Integrate over antenna directivity to get antenna temperature
+        temp = (T_Bh_d \
+            + T_Bv_d).reshape(ag.theta_grid.shape) * directivity_RHCP \
+            * np.sin(np.deg2rad(ag.theta))[:, None]
+        temp = scipy.integrate.simpson(
+            temp, 
+            x=np.deg2rad(ag.phi_grid))
+        T_A[d] = (1 / (4 * np.pi)) * scipy.integrate.simpson(
+            temp, 
+            x=np.deg2rad(ag.theta))
+        
+    return T_A, T_Bh_d, T_Bv_d
 
 class uhf_antenna():
     def directivity(self, T):
@@ -758,6 +689,15 @@ class europa_ice_model:
         
     def salt_fraction_at_depth(self, d):
         return self.rho_salt
+
+# Bit error rate for MFSK with N bits
+def probability_of_error_for_MFSK(CNR_per_bit, N):
+    if 10*np.log10(CNR_per_bit) > 15:
+        return 10**-40
+    elif CNR_per_bit > 4*np.log(2):
+        return np.e**(-(N/2) * (CNR_per_bit - 2 * np.log(2)))
+    else:
+        return np.e**(-1 * N * ((np.sqrt(CNR_per_bit) - np.sqrt(np.log(2)))**2))
 
 if __name__ == "__main__":
     print(evaluate_number_of_pucks_on_arbitrary_europa())
