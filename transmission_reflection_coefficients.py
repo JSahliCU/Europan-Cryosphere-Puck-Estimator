@@ -101,12 +101,18 @@ def reflectivity_fBm(
         return gamma_ab_s
 
 def fresnel_coefficients(n_i, n_t, theta_i):
-    R_v = (n_i * np.cos(theta_i) - n_t * np.sqrt(1 - (np.sin(theta_i) * n_i / n_t)**2)) \
-        / (n_i * np.cos(theta_i) + n_t * np.sqrt(1 - (np.sin(theta_i) * n_i / n_t)**2))
+    sin_theta_t = n_i * np.sin(theta_i) / n_t
+    # Case of total internal reflection
+    if sin_theta_t > 1:
+        R_v = 1
+        R_h = 1
+    else:
+        theta_t = np.arcsin(sin_theta_t)
+        R_v = (n_i * np.cos(theta_i) - n_t * np.cos(theta_t)) \
+                / (n_i * np.cos(theta_i) + n_t * np.cos(theta_t))
 
-    R_h = (n_i * np.sqrt(1 - (n_i * np.sin(theta_i) / n_t)**2) - n_t * np.cos(theta_i)) \
-        / (n_i * np.sqrt(1 - (n_i * np.sin(theta_i) / n_t)**2) + n_t * np.cos(theta_i))
-
+        R_h = (n_i * np.cos(theta_t) - n_t * np.cos(theta_i)) \
+            / (n_i * np.cos(theta_t) + n_t * np.cos(theta_i))
     return R_v, R_h
 
 def bistatic_scattering_coefficients(
