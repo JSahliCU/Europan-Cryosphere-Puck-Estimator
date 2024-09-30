@@ -5,7 +5,11 @@ from scipy.constants import (
     c,           # Speed of light in vacuum
 )
 from scipy.special import loggamma, factorial, gamma
+# from math import gamma
+# from math import lgamma as loggamma
 from decimal import Decimal
+import sys
+# from numba import jit
 
 def transmissivity_fBm(
         f, epsilon_i_prime, epsilon_t_prime, sigma_A, H, 
@@ -173,6 +177,7 @@ def bistatic_transmission_coefficients(
 
     return N_ab
 
+# @jit
 def _evaluate_fBm_series(
         sigma_A, H, 
         eta_xy, eta_z,
@@ -191,13 +196,13 @@ def _evaluate_fBm_series(
     # Evaluate the series S at 0
     n = 0
 
-    first_fraction = ((-1) ** n) / (2**(2*n) * (factorial(n))**2)
+    first_fraction = ((-1) ** n) / (2**(2*n) * (1.0)**2)
     second_fraction = (eta_xy)**(2*n) / (0.5 * eta_z**2 * sigma_A**2)**((n+1)/H)
     third_factor = gamma((n + 1) / H)
 
     sum = Decimal(first_fraction*second_fraction*third_factor)
     delta_sum_list = [np.log(first_fraction*second_fraction*third_factor)]
-    old_log_factorial = np.log(factorial(n))
+    old_log_factorial = np.log(1.0)
     accuracy_overflow = False
 
     # Evaluate the series S from 1 to max_n_convergence
@@ -218,7 +223,6 @@ def _evaluate_fBm_series(
         except(BaseException):
             print(sigma_A, H, 
                 eta_xy, eta_z, sum, n, delta_sum)
-            import sys
             sys.exit(-1)
             
         delta_sum_list.append(kernel)
@@ -346,7 +350,7 @@ def _evaluate_gaussian_series(
 
     sum = Decimal(0)
     delta_sum_list = []
-    old_log_factorial = np.log(factorial(n))
+    old_log_factorial = np.log(1.0)
     accuracy_overflow = False
 
     # Evaluate the series S from 1 to max_n_convergence

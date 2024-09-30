@@ -44,7 +44,8 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
         D_conv = 5.8e3, #m
         delta_d = 10, #m
         H = 0.75, # Surface roughness hurst coefficient
-        sigma_ref = 0.2 # Surface roughness at reference wavelength (at 1m)
+        sigma_ref = 0.2, # Surface roughness at reference wavelength (at 1m)
+        file_suffix = ''
     ):
     
     eim = europa_ice_model(
@@ -120,7 +121,7 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
     R_v = np.zeros_like(ag.theta_grid).flatten()
     R_h = np.zeros_like(ag.theta_grid).flatten()
 
-    #Lambertian reflection if you'd like to use that instead
+    #Lambertian reflection 
     for t in np.arange(ag.theta_grid.size):
         theta_t = theta_t_values[t]
         phi_t = phi_t_values[t]
@@ -319,6 +320,15 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
             meter_distance_per_wave = 0
             attenuation = 1
 
+    recorded_data = pd.DataFrame({
+        'Placement Depth (m)': placement_depths, 
+        'Received Power (W)': received_power, 
+        'Noise Power (W)': noise_power,
+        'Attenuation': attenuations,
+        'meter_distance_per_waves': meter_distance_per_waves})
+    recorded_data.to_csv('recorded_data_high_band' + file_suffix + '.csv')
+    eim.cryosphere_model_df.to_csv('cryosphere_model' + file_suffix + '.csv')
+
     # Repeat the calculation for the lower band
     bandwidth = 10e3 #Hz
     bit_rate = 1e3 #bps
@@ -427,6 +437,15 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
 
             meter_distance_per_wave = 0
             attenuation = 1
+
+    recorded_data = pd.DataFrame({
+        'Placement Depth (m)': placement_depths, 
+        'Received Power (W)': received_power, 
+        'Noise Power (W)': noise_power,
+        'Attenuation': attenuations,
+        'meter_distance_per_waves': meter_distance_per_waves})
+    recorded_data.to_csv('recorded_data_low_band' + file_suffix + '.csv')
+    eim.cryosphere_model_df.to_csv('cryosphere_model' + file_suffix + '.csv')
 
     return hf_number_of_pucks, uhf_number_of_pucks
 
