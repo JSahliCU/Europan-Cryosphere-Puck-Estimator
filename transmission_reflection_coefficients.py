@@ -549,3 +549,48 @@ def _evaluate_gaussian_series(
         sum = np.nan
 
     return sum, terms_to_converge, accuracy_overflow
+
+def reflectivity_lambertian(
+        theta_i, 
+        theta_s, 
+        bistatic_polarization,
+        debug=False):
+    """
+    Calculates Lambertian reflectivity coefficient
+    UNTESTED
+
+    Args:
+        theta_i (float): incident angle
+        theta_s (float): scattered angle
+        bistatic_polarization (str): 'vv', 'vh', 'hv', or 'hh'
+        debug (bool, optional): Turns on extra debug information. Defaults to False.
+
+    Returns:
+        float: Lambertian reflectivity
+    """
+    return np.cos(theta_s)*np.cos(theta_i)
+
+def transmissivity_lambertian(
+        theta_i, 
+        theta_t, 
+        bistatic_polarization,
+        debug=False):
+    """
+    Calculates Lambertian transmissivity coefficient
+    UNTESTED
+    
+    Args:
+        theta_i (float): incident angle
+        theta_t (float): transmitted angle
+        bistatic_polarization (str): 'vv', 'vh', 'hv', or 'hh'
+        debug (bool, optional): Turns on extra debug information. Defaults to False.
+
+    Returns:
+        float: Lambertian reflectivity
+    """
+
+    return 1 - reflectivity_lambertian(
+        theta_i, 
+        theta_t, 
+        bistatic_polarization,
+        debug)
