@@ -19,12 +19,21 @@ def transmissivity_fBm(
     """
     Based on the method presented by Franceschetti and Riccio for scattering from fractional brownian surfaces
     This function calculates the transmissivity coefficient for an fBm 
-    surface described by 2D allan variance, Hurst coefficient at the passedbistatic polarization
+    surface described by 2D allan variance, Hurst coefficient at the passed bistatic polarization
 
     Giorgio Franceschetti, Daniele Riccio, 
     “Chapter 6 - Scattering from Fractional 
     Brownian Surfaces: Physical-Optics Solution” 
     in Scattering, Natural Surfaces, and Fractals, 2006
+    
+    Implemented as
+    Persistent
+    $\gamma_{ba}^{t}&=\frac{k_{t}^{2}}{\cos\theta_{i}}\left|N_{ba}\right|^{2}\frac{\eta_{s}}{\eta_{t}}\frac{1}{2H}\sum_{n=0}^{\infty}\frac{\left(-1\right)^{n}}{2^{2n}\left(n!\right)^{2}}\frac{\left(k_{d_{xy},t}\right)^{2n}}{\left(\frac{1}{2}k_{d_{z},t}^{2}\sigma_{h}^{2}\right)^{\frac{n+1}{H}}}\Gamma\left(\frac{n+1}{H}\right)$
+
+    Antipersistent
+    $\gamma_{ba}^{t}=\frac{k_{t}^{2}}{\cos\theta_{i}}\left|N_{ba}\right|^{2}\frac{\eta_{s}}{\eta_{t}}2H\sum_{n=1}^{\infty}\frac{\left(-1\right)^{n+1}2^{2nH}}{n!}\frac{n\Gamma\left(1+nH\right)}{\Gamma\left(1-nH\right)}\frac{\left(\frac{\sqrt{2}}{2}\left|k_{d_{z}}\right|\sigma_{A}\right)^{2n}}{k_{d_{xy}}^{2nH+2}}$
+
+    and $N_{ba}$ are the bistatic transmission ceofficents
 
     Args:
         f (float): Frequency
@@ -75,7 +84,7 @@ def transmissivity_fBm(
         theta_t, phi_t, bistatic_polarization
         )
 
-    gamma_ab_t = (k_t**2 / np.cos(theta_i)) * (eta_i / eta_t) * np.abs(N_ab)**2 * (1 / (2*H)) * float(sum)
+    gamma_ab_t = (k_t**2 / np.cos(theta_i)) * (eta_i / eta_t) * np.abs(N_ab)**2 * float(sum)
 
     if debug:
         return gamma_ab_t, sum, terms_to_converge, accuracy_overflow
@@ -100,6 +109,15 @@ def reflectivity_fBm(
     “Chapter 6 - Scattering from Fractional 
     Brownian Surfaces: Physical-Optics Solution” 
     in Scattering, Natural Surfaces, and Fractals, 2006
+
+    Implemented as
+    Persistent
+    $\gamma_{ba}^{r}&=\frac{k_{s}^{2}}{\cos\theta_{i}}\left|F_{ba}\right|^{2}\frac{1}{2H}\sum_{n=0}^{\infty}\frac{\left(-1\right)^{n}}{2^{2n}\left(n!\right)^{2}}\frac{\left(k_{d_{xy},s}\right)^{2n}}{\left(\frac{1}{2}k_{d_{z},s}^{2}\sigma_{h}^{2}\right)^{\frac{n+1}{H}}}\Gamma\left(\frac{n+1}{H}\right)$
+    
+    Antipersistent
+    $\gamma_{ba}^{r}	=\frac{k_{s}^{2}}{\cos\theta_{i}}\left|F_{ba}\right|^{2}2H\sum_{n=1}^{\infty}\frac{\left(-1\right)^{n+1}2^{2nH}}{n!}\frac{n\Gamma\left(1+nH\right)}{\Gamma\left(1-nH\right)}\frac{\left(\frac{\sqrt{2}}{2}\left|k_{d_{z}}\right|\sigma_{A}\right)^{2n}}{k_{d_{xy}}^{2nH+2}}
+
+    where $F_{ba}$ are the bistatic reflection coefficients.
 
     Args:
         f (float): Frequency
@@ -149,7 +167,7 @@ def reflectivity_fBm(
             epsilon_i_prime, epsilon_t_prime, theta_i, 
             theta_s, phi_s, bistatic_polarization)
 
-        gamma_ab_s = (k_i**2 / np.cos(theta_i)) * np.abs(F_ab)**2 * (1 / (2*H)) * float(sum)
+        gamma_ab_s = (k_i**2 / np.cos(theta_i)) * np.abs(F_ab)**2 * float(sum)
 
     if debug:
         return gamma_ab_s, sum, terms_to_converge, accuracy_overflow
@@ -159,9 +177,12 @@ def reflectivity_fBm(
 def fresnel_coefficients(n_i, n_t, theta_i):
     """Calculation for fresnel reflection coefficients
 
+    Implemented as
+    $R_{v}\left(\theta_{i}\right)&=\frac{n_{1}\cos\theta_{i}-n_{2}\sqrt{1-\left(\frac{n_{1}}{n_{2}}\sin\theta_{i}\right)^{2}}}{n_{1}\cos\theta_{i}+n_{2}\sqrt{1-\left(\frac{n_{1}}{n_{2}}\sin\theta_{i}\right)^{2}}}\\R_{h}\left(\theta_{i}\right)&=\frac{n_{1}\sqrt{1-\left(\frac{n_{1}}{n_{2}}\sin\theta_{i}\right)^{2}}-n_{2}\cos\theta_{i}}{n_{1}\sqrt{1-\left(\frac{n_{1}}{n_{2}}\sin\theta_{i}\right)^{2}}+n_{2}\cos\theta_{i}}\\n_{2}&=\sqrt{\epsilon_{s}^{\prime}\epsilon_{0}\mu_{0}}\\n_{1}&=\sqrt{\epsilon_{0}\mu_{0}}$
+
     Args:
         n_i (float): index of refrection of incident medium
-        n_t (float): index of refrection of the scattering medium
+        n_t (float): index of refrection of the scattering/transmission medium
         theta_i (float): incident angle of the wave front measured from the normal of medium interface
 
     Returns:
@@ -186,9 +207,16 @@ def bistatic_scattering_coefficients(
     theta_s, phi_s, bistatic_polarization):
     """
     Bistatic fresnel scattering coefficients
+    
     Tsang, Leung, Kong, Jin Au, Shin, Robert T. 
     “Ch 2.6. Scattering and Emission by Random Rough Surfaces” 
     in Theory of Microwave Remote Sensing, 1985.
+
+    Implemented as
+    $F_{hh}&=\left[\left(1-R_{h}\right)\cos\theta_{i}-\left(1+R_{h}\right)\cos\theta_{s}\right]\cos\phi_{s}\\F_{hv}&=\left[\left(1+R_{h}\right)-\left(1-R_{h}\right)\cos\theta_{i}\cos\theta_{s}\right]\sin\phi_{s}\\F_{vh}&=\left[\left(1+R_{v}\right)\cos\theta_{i}\cos\theta_{s}-\left(1-R_{v}\right)\right]\sin\phi_{s}\\F_{vv}&=\left[-\left(1-R_{v}\right)\cos\theta_{s}+\left(1+R_{v}\right)\cos\theta_{i}\right]\cos\phi_{s}$
+
+    where $R_\alpha$ is the fresnel reflection coefficient at polarization $\alpha$
+    
     Args:
         epsilon_i_prime (float): permittivity of the incident medium
         epsilon_t_prime (float): permittivity of the scattering medium
@@ -227,6 +255,12 @@ def bistatic_transmission_coefficients(
     Tsang, Leung, Kong, Jin Au, Shin, Robert T. 
     “Ch 2.6. Scattering and Emission by Random Rough Surfaces” 
     in Theory of Microwave Remote Sensing, 1985.
+
+    Implemented as
+    $N_{hh}&=\left[\left(1+R_{h}\right)\cos\theta_{t}+\frac{\eta_{t}}{\eta_{s}}\left(1-R_{h}\right)\cos\theta_{i}\right]\cos\phi_{t}\\N_{hv}&=\left[-\left(1+R_{h}\right)-\frac{\eta_{t}}{\eta_{s}}\left(1-R_{h}\right)\cos\theta_{i}\cos\theta_{t}\right]\sin\phi_{t}\\N_{vh}&=\left[\frac{\eta_{t}}{\eta_{s}}\left(1+R_{v}\right)-\left(1-R_{v}\right)\cos\theta_{i}\cos\theta_{t}\right]\sin\phi_{t}\\N_{vv}&=\left[\frac{\eta_{t}}{\eta_{s}}\left(1+R_{v}\right)\cos\theta_{t}+\left(1-R_{v}\right)\cos\theta_{i}\right]\cos\phi_{t}$
+
+    where $R_\alpha$ is the fresnel reflection coefficent at polarization $\alpha$
+
     Args:
         epsilon_i_prime (float): permittivity of the incident medium
         epsilon_t_prime (float): permittivity of the transmission medium
@@ -269,11 +303,16 @@ def _evaluate_fBm_series(
     """
     Based on the method presented by Franceschetti and Riccio for scattering 
     from fractional brownian surfaces
-    This function calculates the series for a persistent fBm 
+    This function calculates the series for an fBm 
     surface described by 2D allan variance, Hurst coefficient at the 
     passed bistatic polarization
 
-    Currently only supports persistent fBm
+    This function implements the mathematical series as 
+    Persistent 0.5 <= H < 1.0
+    $\frac{1}{2H}\sum_{n=0}^{\infty}\frac{\left(-1\right)^{n}}{2^{2n}\left(n!\right)^{2}}\frac{\left(k_{d_{xy},s}\right)^{2n}}{\left(\frac{1}{2}k_{d_{z},s}^{2}\sigma_{h}^{2}\right)^{\frac{n+1}{H}}}\Gamma\left(\frac{n+1}{H}\right)&\\=\frac{1}{2H}\sum_{n=0}^{\infty}\left(-1\right)^{n}\exp\biggg(-2n\ln2-2\ln\left(n\right)&-2\ln\left(\left(n-1\right)!\right)\\+2n\ln\left(\eta_{xy}\right)-\frac{n+1}{H}\ln\left(\frac{1}{2}\eta_{z}^{2}\sigma_{h}^{2}\right)&+\ln\left(\Gamma\left(\frac{n+1}{H}\right)\right)\biggg)$
+    
+    Antipersistent 0 < H < 0.5
+    $2H\sum_{n=1}^{\infty}\frac{\left(-1\right)^{n+1}2^{2nH}}{n!}\frac{n\Gamma\left(1+nH\right)}{\Gamma\left(1-nH\right)}\frac{\left(\frac{\sqrt{2}}{2}\left|k_{d_{z}}\right|\sigma_{A}\right)^{2n}}{k_{d_{xy}}^{2nH+2}}&\\=2H\sum_{n=1}^{\infty}\left(-1\right)^{n+1}\exp\biggg(2nH\ln2-\ln\left(\left(n-1\right)!\right)&+\ln n\\+\ln\Gamma\left(1+nH\right)-\ln\Gamma\left(1-nH\right)&\\+2n\ln\left(\frac{\sqrt{2}}{2}\left|k_{d_{z}}\right|\sigma_{A}\right)-2nH\ln\left(k_{d_{xy}}^{2}\right)&\biggg)$
 
     Giorgio Franceschetti, Daniele Riccio, 
     “Chapter 6 - Scattering from Fractional 
@@ -295,49 +334,91 @@ def _evaluate_fBm_series(
         float: fBm Series output
     """
 
-    if H < 0.5:
-        raise(ValueError('This series is only valid for H >= 1/2'))
+    # Antipersisten Case (UNTESTED)
+    if H < 0.5 and H > 0:
+        # Evaluate the series S at 0
+        n = 0
 
-    # Evaluate the series S at 0
-    n = 0
+        sum = Decimal(0)
+        delta_sum_list = []
+        old_log_factorial = np.log(1.0)
+        accuracy_overflow = False
 
-    first_fraction = ((-1) ** n) / (2**(2*n) * (1.0)**2)
-    second_fraction = (eta_xy)**(2*n) / (0.5 * eta_z**2 * sigma_A**2)**((n+1)/H)
-    third_factor = gamma((n + 1) / H)
+        # Evaluate the series S from 1 to max_n_convergence
+        # or until the terms is less than tolerance
+        for n in np.arange(1.0, max_n_convergence + 1.0, 1):
 
-    sum = Decimal(first_fraction*second_fraction*third_factor)
-    delta_sum_list = [np.log(first_fraction*second_fraction*third_factor)]
-    old_log_factorial = np.log(1.0)
-    accuracy_overflow = False
-
-    # Evaluate the series S from 1 to max_n_convergence
-    # or until the terms is less than tolerance
-    for n in np.arange(1.0, max_n_convergence + 1.0, 1):
-
-        new_log_factorial = 2 * np.log(n) + old_log_factorial
-        old_log_factorial = new_log_factorial
-        kernel =  -2 * n * np.log(2) \
-            - new_log_factorial \
-                + 2 * n * np.log(eta_xy) \
-                    - ((n+1) / H)*np.log(0.5 * eta_z**2 * sigma_A**2) \
-                        + loggamma((n + 1) / H)
-        
-        delta_sum = Decimal(np.e)**Decimal(kernel)
-        try:
-            sum += Decimal((-1**n)) * delta_sum
-        except(BaseException):
-            print(sigma_A, H, 
-                eta_xy, eta_z, sum, n, delta_sum)
-            sys.exit(-1)
+            new_log_factorial = np.log(n) + old_log_factorial
+            old_log_factorial = new_log_factorial
+            kernel = 2 * n * H * np.log(2) - new_log_factorial + np.log(n)\
+                + loggamma(1 + n * H) - loggamma(1 - n * H)\
+                + 2 * n * np.log(np.abs(eta_z) * sigma_A * np.sqrt(2) / 2)\
+                - 2 * n * H * np.log(eta_xy**2)
             
-        delta_sum_list.append(kernel)
+            delta_sum = Decimal(np.e)**Decimal(kernel)
+            try:
+                sum += Decimal((-1**(n+1))) * delta_sum
+            except(BaseException):
+                print(sigma_A, H, 
+                    eta_xy, eta_z, sum, n, delta_sum)
+                sys.exit(-1)
+                
+            delta_sum_list.append(kernel)
 
-        if kernel > decimal_precision :
-            accuracy_overflow = True
+            if kernel > decimal_precision :
+                accuracy_overflow = True
 
-        if n != 0:   
-            if tolerance > delta_sum:
-                break
+            if n != 0:   
+                if tolerance > delta_sum:
+                    break
+
+        sum *= (2*H)
+
+    # Persistent Case
+    elif H >= 0.5 and H < 1.0:
+        # Evaluate the series S at 0
+        n = 0
+
+        first_fraction = ((-1) ** n) / (2**(2*n) * (1.0)**2)
+        second_fraction = (eta_xy)**(2*n) / (0.5 * eta_z**2 * sigma_A**2)**((n+1)/H)
+        third_factor = gamma((n + 1) / H)
+
+        sum = Decimal(first_fraction*second_fraction*third_factor)
+        delta_sum_list = [np.log(first_fraction*second_fraction*third_factor)]
+        old_log_factorial = np.log(1.0)
+        accuracy_overflow = False
+
+        # Evaluate the series S from 1 to max_n_convergence
+        # or until the terms is less than tolerance
+        for n in np.arange(1.0, max_n_convergence + 1.0, 1):
+
+            new_log_factorial = 2 * np.log(n) + old_log_factorial
+            old_log_factorial = new_log_factorial
+            kernel =  -2 * n * np.log(2) \
+                - new_log_factorial \
+                    + 2 * n * np.log(eta_xy) \
+                        - ((n+1) / H)*np.log(0.5 * eta_z**2 * sigma_A**2) \
+                            + loggamma((n + 1) / H)
+            
+            delta_sum = Decimal(np.e)**Decimal(kernel)
+            try:
+                sum += Decimal((-1**n)) * delta_sum
+            except(BaseException):
+                print(sigma_A, H, 
+                    eta_xy, eta_z, sum, n, delta_sum)
+                sys.exit(-1)
+                
+            delta_sum_list.append(kernel)
+
+            if kernel > decimal_precision :
+                accuracy_overflow = True
+
+            if n != 0:   
+                if tolerance > delta_sum:
+                    break
+        sum *= (1 / (2*H))
+    else:
+        raise ValueError("Invalid value of Hurst Coefficient H")
     
     # Mask the sum if it exceeded the max n convergence, 
     # or if the decimal precision was not high enough
@@ -364,6 +445,12 @@ def transmissivity_gaussian(
     Tsang, Leung, Kong, Jin Au, Shin, Robert T. 
     “Ch 2.6. Scattering and Emission by Random Rough Surfaces” 
     in Theory of Microwave Remote Sensing, 1985.
+
+    Implemented as
+    $\gamma_{ba}^{t}&=\frac{k_{t}^{2}}{4\cos\theta_{i}}\frac{\eta_{s}}{\eta_{t}}\left|N_{ba}\right|^{2}\sum_{m=1}^{\infty}\frac{\left(k_{d_{z},t}^{2}\sigma_{h}^{2}\right)^{m}}{m!m}l^{2}\exp\left(-\frac{k_{d_{xy},t}^{2}l^{2}}{4m}\right)\exp\left(k_{d_{z},t}^{2}\sigma_{h}^{2}\right)$
+    
+    where $N_{ba}$ are the bistatic transmissivity coefficents
+
     Args:
         f (float): frequency to evaluate
         epsilon_i_prime (float): permittivity of the incident medium
@@ -433,6 +520,11 @@ def reflectivity_gaussian(
     “Ch 2.6. Scattering and Emission by Random Rough Surfaces” 
     in Theory of Microwave Remote Sensing, 1985.
 
+    Implemented as
+    $\gamma_{ba}^{r}&=\frac{k_{s}^{2}}{4\cos\theta_{i}}\left|F_{ba}\right|^{2}\sum_{m=1}^{\infty}\frac{\left(k_{d_{z},s}^{2}\sigma_{h}^{2}\right)^{m}}{m!m}l^{2}\exp\left(-\frac{k_{d_{xy},s}^{2}l^{2}}{4m}\right)\exp\left(k_{d_{z},s}^{2}\sigma_{h}^{2}\right)$
+
+    where $F_{ba}$ is the bistatic scattering coefficient
+
     Args:
         f (float): frequency to evaluate
         epsilon_i_prime (float): permittivity of the incident medium
@@ -496,6 +588,9 @@ def _evaluate_gaussian_series(
     Tsang, Leung, Kong, Jin Au, Shin, Robert T. 
     “Ch 2.6. Scattering and Emission by Random Rough Surfaces” 
     in Theory of Microwave Remote Sensing, 1985.
+
+    Implemented as
+    $\sum_{m=1}^{\infty}\frac{\left(k_{d_{z}}^{2}\sigma_{h}^{2}\right)^{m}}{m!m}l^{2}\exp\left(-\frac{k_{d_{xy}}l^{2}}{4m}\right)\exp\left(k_{d_{z}}^{2}\sigma_{h}^{2}\right)&=\sum_{m=1}^{\infty}\frac{1}{m!}\exp\left(\ln\left(\frac{l^{2}}{m}\right)+m\ln\left(k_{d_{z}}^{2}\sigma_{h}^{2}\right)-\frac{k_{d_{xy}}^{2}l^{2}}{4m}+k_{d_{z}}^{2}\sigma_{h}^{2}\right)$
 
     Args:
         sigma_h (float): variance of the surface height
