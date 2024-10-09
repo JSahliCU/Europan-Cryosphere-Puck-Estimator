@@ -331,7 +331,7 @@ def _evaluate_fBm_series(
         debug (bool, optional): Enables debug mode. Defaults to False.
 
     Returns:
-        float: fBm Series output
+        Decimal: fBm Series output
     """
 
     # Antipersisten Case (UNTESTED)
@@ -372,7 +372,7 @@ def _evaluate_fBm_series(
                 if tolerance > delta_sum:
                     break
 
-        sum *= (2*H)
+        sum *= Decimal(2*H)
 
     # Persistent Case
     elif H >= 0.5 and H < 1.0:
@@ -416,7 +416,7 @@ def _evaluate_fBm_series(
             if n != 0:   
                 if tolerance > delta_sum:
                     break
-        sum *= (1 / (2*H))
+        sum *= Decimal(1 / (2*H))
     else:
         raise ValueError("Invalid value of Hurst Coefficient H")
     
@@ -603,7 +603,7 @@ def _evaluate_gaussian_series(
         debug (bool, optional): Turns on debug information. Defaults to False.
 
     Returns:
-        float: result of series
+        Decimal: result of series
     """
 
     sum = Decimal(0)
