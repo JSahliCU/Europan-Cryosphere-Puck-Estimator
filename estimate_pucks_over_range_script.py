@@ -186,9 +186,13 @@ if __name__ == "__main__":
             
             monitor_result.wait()
 
-    n_hf, n_uhf  = list(zip(*results.get()))
+    uhf_pucks, uhf_pucks_cond, uhf_pucks_conv, hf_pucks, hf_pucks_cond, hf_pucks_conv  = list(zip(*results.get()))
     # Convert the results back to a DataFrame or any other desired format
-    df['N_UHF'] = n_uhf
-    df['N_HF'] = n_hf
+    df['N_UHF'] = uhf_pucks
+    df['N_UHF Conductive'] = uhf_pucks_cond
+    df['N_UHF Convective'] = uhf_pucks_conv
+    df['N_HF'] = hf_pucks
+    df['N_HF Conductive'] = hf_pucks_cond
+    df['N_HF Convective'] = hf_pucks_conv
 
     df.to_csv('number_of_pucks_estimates.csv')

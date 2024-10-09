@@ -6,6 +6,8 @@ import pandas as pd
 import scipy
 import math
 
+import sys
+
 import math_funcs
 
 from scipy.special import loggamma, factorial, gamma
@@ -203,251 +205,39 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
         ant.UHF_directivity_pattern_RHCP)
 
     # ------- Now estimate the puck placements -----------
-    high_band_antenna = uhf_antenna()
-    low_band_antenna = hf_antenna()
+    # Estimate the puck placement at UHF
+    uhf_pucks, uhf_pucks_cond, uhf_pucks_conv = estimate_puck_placement(
+        1,
+        10e3,
+        uhf_antenna(), #antenna_pattern type
+        mm.high_band_f,
+        1e3,
+        1e-5,
+        11,
+        eim,
+        'T_A Upwelling High Band (K)',
+        'T_A Downwelling High Band (K)',
+        2,
+        True,
+        file_suffix
+    )
 
-    # while placement_depth < eim.D_total:
-    bandwidth = 10e3 #Hz
-    bit_rate = 1e3 #bps
-    limit_probability_of_error = 10**-5
-    noise_figure = math_funcs.db_2_power(11)
-    receiver_temperature = 290 * (noise_figure - 1)
-
-    epsilon_s_prime = eim.cryosphere_model_df.loc[0]['epsilon_s_prime']
-    epsilon_s_primeprime = eim.cryosphere_model_df.loc[0]['epsilon_s_primeprime']
-    sigma_s = eim.cryosphere_model_df.loc[0]['sigma_s']
-    temperature_ice = eim.cryosphere_model_df.loc[0]['Temperature (K)']
-
-    transmitted_power = 1
-    lambda_s_t = c / (np.sqrt(epsilon_s_prime) * mm.high_band_f)
-    transmitter_gain = high_band_antenna.realized_gain(temperature_ice)
-
-    radiation_efficiency = high_band_antenna.radiation_efficiency(temperature_ice)
-    matching_efficiency = high_band_antenna.matching_efficiency
-    T_A = eim.cryosphere_model_df.loc[0]['T_A Upwelling High Band (K)']
-
-    antenna_temperature = radiation_efficiency * matching_efficiency * T_A \
-        + (1 - radiation_efficiency) * matching_efficiency * temperature_ice \
-            + (1 - matching_efficiency) * 290
-    system_temperature = antenna_temperature + receiver_temperature
-    noise_power_upper_puck = k * system_temperature * bandwidth
-
-    meter_distance_per_wave = 0
-    attenuation = 1
-    uhf_number_of_pucks = 1
-
-    # Data to record
-    placement_depths = [0]
-    received_powers = [0]
-    noise_powers = [noise_power_upper_puck]
-    attenuations = [attenuation]
-    meter_distance_per_waves = [meter_distance_per_wave]
-        
-    for d in np.arange(len(eim.cryosphere_model_df)):
-        epsilon_s_prime = eim.cryosphere_model_df.loc[d]['epsilon_s_prime']
-        epsilon_s_primeprime = eim.cryosphere_model_df.loc[d]['epsilon_s_primeprime']
-        sigma_s = eim.cryosphere_model_df.loc[d]['sigma_s']
-        temperature_ice = eim.cryosphere_model_df.loc[d]['Temperature (K)']
-        
-        lambda_s = c / (np.sqrt(epsilon_s_prime) * mm.high_band_f)
-        lambda_s_r = lambda_s
-
-        alpha = calc_path_loss(mm.high_band_omega, epsilon_s_prime, epsilon_s_primeprime, sigma_s)
-        
-        differential_attenuation = np.e**(-2 * (eim.delta_d) * alpha)
-        attenuation *= differential_attenuation
-        
-        differential_meter_distance_per_wave = lambda_s * eim.delta_d
-        meter_distance_per_wave += differential_meter_distance_per_wave
-        space_path_loss = 1 / (meter_distance_per_wave**2)
-        
-        # Received power at the lower puck and upper puck
-        received_power = transmitted_power * (lambda_s_t**2/(4 * np.pi)) \
-            * transmitter_gain \
-                * attenuation * space_path_loss \
-                    * (lambda_s_r**2/(4 * np.pi)) \
-                        * high_band_antenna.realized_gain(temperature_ice)
-        
-        # Noise power at the lower puck
-        radiation_efficiency = high_band_antenna.radiation_efficiency(temperature_ice)
-        matching_efficiency = high_band_antenna.matching_efficiency
-        T_A = eim.cryosphere_model_df.loc[d]['T_A Downwelling High Band (K)']
-        
-        antenna_temperature = radiation_efficiency * matching_efficiency * T_A \
-            + (1 - radiation_efficiency) * matching_efficiency * temperature_ice \
-                + (1 - matching_efficiency) * 290
-        system_temperature = antenna_temperature + receiver_temperature
-        noise_power = k * system_temperature * bandwidth
-
-        # Calculate the probability of a bit error at the lower puck
-        SNR = received_power / noise_power
-        CNR_per_bit = (bit_rate/bandwidth) * SNR
-        probability_of_error = probability_of_error_for_MFSK(CNR_per_bit, 2)
-
-        # Calculate the probability of a bit error at the upper puck
-        SNR_upper_puck = received_power / noise_power_upper_puck
-        CNR_per_bit_upper_puck = (bit_rate/bandwidth) * SNR_upper_puck
-        probability_of_error_upper_puck = probability_of_error_for_MFSK(CNR_per_bit_upper_puck, 2)
-
-        # If we are going to pass the limit of error probability, place a puck
-        # and then reset all of the upper puck stuff
-        if probability_of_error > limit_probability_of_error \
-            and probability_of_error_upper_puck > limit_probability_of_error:
-            uhf_number_of_pucks += 1
-
-            # Record data
-            placement_depths.append(eim.cryosphere_model_df.loc[d]['Depth (m)'])
-            received_powers.append(received_power)
-            noise_powers.append(noise_power)
-            attenuations.append(attenuation)
-            meter_distance_per_waves.append(meter_distance_per_wave)
-
-            # Reset upper puck things
-
-            lambda_s_t = c / (np.sqrt(epsilon_s_prime) * mm.high_band_f)
-            transmitter_gain = high_band_antenna.realized_gain(temperature_ice)
-
-            radiation_efficiency = high_band_antenna.radiation_efficiency(temperature_ice)
-            matching_efficiency = high_band_antenna.matching_efficiency
-            T_A = eim.cryosphere_model_df.loc[d]['T_A Upwelling High Band (K)']
-
-            antenna_temperature = radiation_efficiency * matching_efficiency * T_A \
-                + (1 - radiation_efficiency) * matching_efficiency * temperature_ice \
-                    + (1 - matching_efficiency) * 290
-            system_temperature = antenna_temperature + receiver_temperature
-            noise_power_upper_puck = k * system_temperature * bandwidth
-
-            meter_distance_per_wave = 0
-            attenuation = 1
-
-    recorded_data = pd.DataFrame({
-        'Placement Depth (m)': placement_depths, 
-        'Received Power (W)': received_power, 
-        'Noise Power (W)': noise_power,
-        'Attenuation': attenuations,
-        'meter_distance_per_waves': meter_distance_per_waves})
-    recorded_data.to_csv('recorded_data_high_band' + file_suffix + '.csv')
-    eim.cryosphere_model_df.to_csv('cryosphere_model' + file_suffix + '.csv')
-
-    # Repeat the calculation for the lower band
-    bandwidth = 10e3 #Hz
-    bit_rate = 1e3 #bps
-    limit_probability_of_error = 10**-5
-    noise_figure = math_funcs.db_2_power(11)
-    receiver_temperature = 290 * (noise_figure - 1)
-
-    epsilon_s_prime = eim.cryosphere_model_df.loc[0]['epsilon_s_prime']
-    epsilon_s_primeprime = eim.cryosphere_model_df.loc[0]['epsilon_s_primeprime']
-    sigma_s = eim.cryosphere_model_df.loc[0]['sigma_s']
-    temperature_ice = eim.cryosphere_model_df.loc[0]['Temperature (K)']
-
-    transmitted_power = 1
-    lambda_s_t = c / (np.sqrt(epsilon_s_prime) * mm.low_band_f)
-    transmitter_gain = low_band_antenna.directivity * low_band_antenna.matching_efficiency * low_band_antenna.radiation_efficiency
-
-    radiation_efficiency = low_band_antenna.radiation_efficiency
-    matching_efficiency = low_band_antenna.matching_efficiency
-    T_A = eim.cryosphere_model_df.loc[0]['T_A Downwelling Low Band (K)']
-
-    antenna_temperature = radiation_efficiency * matching_efficiency * T_A \
-        + (1 - radiation_efficiency) * matching_efficiency * temperature_ice \
-            + (1 - matching_efficiency) * 290
-    system_temperature = antenna_temperature + receiver_temperature
-    noise_power_upper_puck = k * system_temperature * bandwidth
-
-    meter_distance_per_wave = 0
-    attenuation = 1
-    hf_number_of_pucks = 1
-
-    # Data to record
-    placement_depths = [0]
-    received_powers = [0]
-    noise_powers = [noise_power_upper_puck]
-    attenuations = [attenuation]
-    meter_distance_per_waves = [meter_distance_per_wave]
-
-    for d in np.arange(len(eim.cryosphere_model_df)):
-        epsilon_s_prime = eim.cryosphere_model_df.loc[d]['epsilon_s_prime']
-        epsilon_s_primeprime = eim.cryosphere_model_df.loc[d]['epsilon_s_primeprime']
-        sigma_s = eim.cryosphere_model_df.loc[d]['sigma_s']
-        temperature_ice = eim.cryosphere_model_df.loc[d]['Temperature (K)']
-        
-        lambda_s = c / (np.sqrt(epsilon_s_prime) * mm.low_band_f)
-        lambda_s_r = lambda_s
-
-        alpha = calc_path_loss(mm.low_band_omega, epsilon_s_prime, epsilon_s_primeprime, sigma_s)
-        
-        differential_attenuation = np.e**(-2 * (eim.delta_d) * alpha)
-        attenuation *= differential_attenuation
-        
-        differential_meter_distance_per_wave = lambda_s * eim.delta_d
-        meter_distance_per_wave += differential_meter_distance_per_wave
-        space_path_loss = 1 / (meter_distance_per_wave**2)
-        
-        # Received power at the lower puck and upper puck
-        received_power = transmitted_power * (lambda_s_t**2/(4 * np.pi)) \
-            * transmitter_gain \
-                * attenuation * space_path_loss \
-                    * (lambda_s_r**2/(4 * np.pi)) \
-                        * transmitter_gain
-        
-        # Noise power at the lower puck
-        T_A = eim.cryosphere_model_df.loc[d]['T_A Downwelling Low Band (K)']
-        
-        antenna_temperature = radiation_efficiency * matching_efficiency * T_A \
-            + (1 - radiation_efficiency) * matching_efficiency * temperature_ice \
-                + (1 - matching_efficiency) * 290
-        system_temperature = antenna_temperature + receiver_temperature
-        noise_power = k * system_temperature * bandwidth
-
-        # Calculate the probability of a bit error at the lower puck
-        SNR = received_power / noise_power
-        CNR_per_bit = (bit_rate/bandwidth) * SNR
-        probability_of_error = probability_of_error_for_MFSK(CNR_per_bit, 2)
-
-        # Calculate the probability of a bit error at the upper puck
-        SNR_upper_puck = received_power / noise_power_upper_puck
-        CNR_per_bit_upper_puck = (bit_rate/bandwidth) * SNR_upper_puck
-        probability_of_error_upper_puck = probability_of_error_for_MFSK(CNR_per_bit_upper_puck, 2)
-
-        # If we are going to pass the limit of error probability, place a puck
-        # and then reset all of the upper puck stuff
-        if probability_of_error > limit_probability_of_error \
-            and probability_of_error_upper_puck > limit_probability_of_error:
-            hf_number_of_pucks += 1
-
-            # Record data
-            placement_depths.append(eim.cryosphere_model_df.loc[d]['Depth (m)'])
-            received_powers.append(received_power)
-            noise_powers.append(noise_power)
-            attenuations.append(attenuation)
-            meter_distance_per_waves.append(meter_distance_per_wave)
-
-            # Reset upper puck things
-
-            lambda_s_t = c / (np.sqrt(epsilon_s_prime) * mm.low_band_f)
-
-            T_A = eim.cryosphere_model_df.loc[d]['T_A Downwelling Low Band (K)']
-
-            antenna_temperature = radiation_efficiency * matching_efficiency * T_A \
-                + (1 - radiation_efficiency) * matching_efficiency * temperature_ice \
-                    + (1 - matching_efficiency) * 290
-            system_temperature = antenna_temperature + receiver_temperature
-            noise_power_upper_puck = k * system_temperature * bandwidth
-
-            meter_distance_per_wave = 0
-            attenuation = 1
-
-    recorded_data = pd.DataFrame({
-        'Placement Depth (m)': placement_depths, 
-        'Received Power (W)': received_power, 
-        'Noise Power (W)': noise_power,
-        'Attenuation': attenuations,
-        'meter_distance_per_waves': meter_distance_per_waves})
-    recorded_data.to_csv('recorded_data_low_band' + file_suffix + '.csv')
-    eim.cryosphere_model_df.to_csv('cryosphere_model' + file_suffix + '.csv')
-
-    return hf_number_of_pucks, uhf_number_of_pucks
+    hf_pucks, hf_pucks_cond, hf_pucks_conv = estimate_puck_placement(
+        1,
+        10e3,
+        hf_antenna(), #antenna_pattern type
+        mm.low_band_f,
+        1e3,
+        1e-5,
+        11,
+        eim,
+        'T_A Upwelling Low Band (K)',
+        'T_A Downwelling Low Band (K)',
+        2,
+        True,
+        file_suffix
+    )
+    return uhf_pucks, uhf_pucks_cond, uhf_pucks_conv, hf_pucks, hf_pucks_cond, hf_pucks_conv
 
 def calc_path_loss(omega, epsilon_s_prime, epsilon_s_primeprime, sigma_s):
     return (omega / np.sqrt(2)) * np.sqrt(epsilon_0 * mu_0)\
@@ -582,14 +372,42 @@ def calc_welling_noise_stream(
         
     return T_A, T_Bh_d, T_Bv_d
 
-class uhf_antenna():
-    def directivity(self, T):
-        directivity_in_100K_ice = 4.64 # dB
-        directivity_in_273K_ice = 4.46 # dB
-        m, b = math_funcs.linear_fit(
-            100, math_funcs.db_2_power(directivity_in_100K_ice), 
-            273, math_funcs.db_2_power(directivity_in_273K_ice))
-        return m * T + b
+class antenna_pattern:
+    def __init__(
+        self, 
+        carrier_frequency,
+        ):
+        self.carrier_frequency = carrier_frequency
+
+    def directivity(self, theta, phi, T):
+        return 0.0
+    
+    def radiation_efficiency(self, T):
+        return 0.0
+    
+    def matching_efficiency(self, T):
+        return 0.0
+
+    def realized_gain(self, T):
+        return self.directivity(0, 0, T) \
+            * self.radiation_efficiency(T) * self.matching_efficiency(T)
+
+class uhf_antenna(antenna_pattern):
+    def __init__(self):
+        super().__init__(carrier_frequency = 413e6)
+
+    def directivity(self, theta, phi, T):
+        if theta == 0:
+            directivity_in_100K_ice = 4.64 # dB
+            directivity_in_273K_ice = 4.46 # dB
+            m, b = math_funcs.linear_fit(
+                100, math_funcs.db_2_power(directivity_in_100K_ice), 
+                273, math_funcs.db_2_power(directivity_in_273K_ice))
+            return m * T + b # Units of power
+        elif theta == 180:
+            return 0
+        else:
+            raise ValueError("Not defined theta angle passed")
 
     def radiation_efficiency(self, T):
         rad_eff_in_273K_ice = 0.228 # dB
@@ -598,18 +416,23 @@ class uhf_antenna():
             100, rad_eff_in_100K_ice, 
             273, rad_eff_in_273K_ice)
         return m * T + b
+
+    def matching_efficiency(self, T):
+        return 0.952
+
+
+class hf_antenna(antenna_pattern):
+    def __init__(self):
+        super().__init__(carrier_frequency =5.373e6)
+
+    def directivity(self, theta, phi, T):
+        return  math_funcs.db_2_power(1.73) # Units of power
     
-    def realized_gain(self, T):
-        return self.directivity(T) * self.radiation_efficiency(T) * self.matching_efficiency
-
-    matching_efficiency = 0.952
-    carrier_frequency = 413e6 # Hz
-
-class hf_antenna():
-    directivity = math_funcs.db_2_power(1.73) # dB
-    radiation_efficiency = 0.007
-    matching_efficiency = 1
-    carrier_frequency = 5.373e6 # Hz
+    def radiation_efficiency(self, T):
+        return 0.007
+    
+    def matching_efficiency(self, T):
+        return 1
 
 class mission_model:
     def __init__(self,
@@ -713,6 +536,148 @@ class europa_ice_model:
     def salt_fraction_at_depth(self, d):
         return self.rho_salt
 
+def estimate_puck_placement(
+    transmitter_power,
+    communication_bandwidth,
+    antenna_pattern, #antenna_pattern type
+    communication_frequency,
+    data_rate,
+    limit_probability_of_error,
+    noise_figure,
+    cryosphere_model,
+    T_A_upwelling_col,
+    T_A_downwelling_col,
+    symbols,
+    record_puck_placement_data,
+    file_suffix
+):
+    eim = cryosphere_model
+    receiver_temperature = 290 * (math_funcs.db_2_power(noise_figure) - 1)
+    attenuation = 1
+    prop_distance = 0
+
+    # Data to record
+    placement_depths = []
+    attenuations = []
+
+    number_of_pucks = 0
+    number_of_cond_pucks = 0
+    number_of_conv_pucks = 0
+
+    for d in np.arange(len(eim.cryosphere_model_df)):
+        epsilon_s_prime = eim.cryosphere_model_df.loc[d]['epsilon_s_prime']
+        epsilon_s_primeprime = eim.cryosphere_model_df.loc[d]['epsilon_s_primeprime']
+        sigma_s = eim.cryosphere_model_df.loc[d]['sigma_s']
+        temperature_ice = eim.cryosphere_model_df.loc[d]['Temperature (K)']
+        
+        lambda_s = c / (np.sqrt(epsilon_s_prime) * communication_frequency)
+
+        lower_gain = antenna_pattern.realized_gain(temperature_ice)
+        lower_rad_eff = antenna_pattern.radiation_efficiency(temperature_ice)
+        lower_match_eff = antenna_pattern.matching_efficiency(temperature_ice)
+        
+        lower_T_A_upwelling = eim.cryosphere_model_df.loc[d][T_A_upwelling_col]
+        lower_T_A_downwelling = eim.cryosphere_model_df.loc[d][T_A_upwelling_col]
+
+        ant_backside_exists = \
+            antenna_pattern.directivity(180, 0, temperature_ice) > 0
+        
+        alpha = calc_path_loss(
+            2 * np.pi * communication_frequency, epsilon_s_prime, 
+            epsilon_s_primeprime, sigma_s)
+        differential_attenuation = np.e**(-2 * (eim.delta_d) * alpha)
+        attenuation *= differential_attenuation
+
+        prop_distance += eim.delta_d
+
+        def calc_prob_error(
+                lambda_s,
+                T_A_upwelling,
+                T_A_downwelling,
+                rad_eff,
+                match_eff,
+                temperature_ice,
+        ):
+            received_power = transmitter_power * upper_gain * lower_gain \
+                *  (lambda_s**2 / (4 * np.pi * prop_distance)**2)\
+                * attenuation
+            
+            ant_temp = rad_eff * match_eff * T_A_upwelling\
+                + rad_eff * match_eff * T_A_downwelling\
+                + (1 - rad_eff) * match_eff * temperature_ice \
+                + (1 - match_eff) * 290
+            sys_temp = ant_temp + receiver_temperature
+            noise_power = k * sys_temp * communication_bandwidth 
+
+            signal_to_noise_ratio = received_power / noise_power
+            CNR_per_bit = (data_rate/communication_bandwidth) * signal_to_noise_ratio
+            probability_of_error = probability_of_error_for_MFSK(CNR_per_bit, symbols)
+
+            return probability_of_error
+        
+        place_puck = False
+        if d == 0:
+            place_puck = True
+        else:
+            # Estimate SNR at upper puck
+            upper_prob_error = calc_prob_error(
+                upper_lambda_s,
+                upper_T_A_upwelling,
+                upper_T_A_downwelling * ant_backside_exists,
+                upper_rad_eff,
+                upper_match_eff,
+                upper_ice_temp
+            )
+            # Estimate SNR at lower puck
+            lower_lambda_s = lambda_s
+
+            lower_prob_error = calc_prob_error(
+                lower_lambda_s,
+                lower_T_A_upwelling * ant_backside_exists,
+                lower_T_A_downwelling,
+                lower_rad_eff,
+                lower_match_eff,
+                temperature_ice
+            )
+
+            if lower_prob_error > limit_probability_of_error \
+                or upper_prob_error > limit_probability_of_error:
+                place_puck = True
+
+        if place_puck:
+            number_of_pucks += 1
+            if d * eim.delta_d > eim.D_cond:
+                number_of_conv_pucks += 1
+            else:
+                number_of_cond_pucks += 1
+
+            # Reset accumulating variables
+            attenuation = 1
+            prop_distance = 0
+
+            # Set upper puck static values to current lower puck values
+            upper_lambda_s = lambda_s
+            upper_ice_temp = temperature_ice
+            upper_gain = lower_gain
+            upper_rad_eff = lower_rad_eff
+            upper_match_eff = lower_match_eff
+            upper_T_A_upwelling = lower_T_A_upwelling
+            upper_T_A_downwelling = lower_T_A_downwelling
+
+            # Record Data
+            placement_depths.append(eim.cryosphere_model_df.loc[d]['Depth (m)'])
+            attenuations.append(attenuation)
+
+    if record_puck_placement_data:
+        recorded_data = pd.DataFrame({
+            'Placement Depth (m)': placement_depths, 
+            'Attenuation': attenuations})
+        
+        recorded_data.to_csv('recorded_data_low_band' + file_suffix + '.csv')
+        eim.cryosphere_model_df.to_csv('cryosphere_model' + file_suffix + '.csv')
+
+    return number_of_pucks, number_of_cond_pucks, number_of_conv_pucks
+
 # Bit error rate for MFSK with N bits
 def probability_of_error_for_MFSK(CNR_per_bit, N):
     if 10*np.log10(CNR_per_bit) > 15:
@@ -725,8 +690,8 @@ def probability_of_error_for_MFSK(CNR_per_bit, N):
 if __name__ == "__main__":
     import time
     start_time = time.time()
-    hf_number_of_pucks, uhf_number_of_pucks =\
+    uhf_pucks, uhf_pucks_cond, uhf_pucks_conv, hf_pucks, hf_pucks_cond, hf_pucks_conv =\
         evaluate_number_of_pucks_on_arbitrary_europa()
-    print(f'HF Pucks {hf_number_of_pucks} and UHF pucks {uhf_number_of_pucks}')
+    print(f'HF Pucks {hf_pucks} and UHF pucks {uhf_pucks}')
     print("--- %s seconds ---" % (time.time() - start_time))
     
