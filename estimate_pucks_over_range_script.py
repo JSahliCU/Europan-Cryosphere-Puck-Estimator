@@ -54,46 +54,53 @@ if __name__ == "__main__":
     # })
 
     # with a range of salts and vacuum fractions
-    for eta_vac in [0.1, 0.3]:
-        for rho_salt in [0, 1e-6, 1e-5, 1e-4, 1e-3, 4.2e-2]:
-            gen_d_file_suffix = f"_porosity{eta_vac}_saltfraction{rho_salt:.1e}".replace('.', 'p') 
-            dictionary_list.append({
-                "eta_vac": eta_vac,  # porosity
-                "rho_salt": rho_salt,  # salt fraction
+    for scl in [False, True]:
+        scl_string = ''
+        if scl:
+            scl_string = 'sc'
+        for eta_vac in [0.1, 0.3]:
+            for rho_salt in [0, 1e-6, 1e-5, 1e-4, 1e-3, 4.2e-2]:
+                gen_d_file_suffix = f"{scl_string}_porosity{eta_vac}_saltfraction{rho_salt:.1e}".replace('.', 'p') 
+                dictionary_list.append({
+                    "eta_vac": eta_vac,  # porosity
+                    "rho_salt": rho_salt,  # salt fraction
 
-                "T_u": default_T_u,  #K
-                "T_l": default_T_l,  #K
-                "T_conv": default_T_conv,  #K
-                "D_cond": default_D_cond,  #m
-                "D_phi": default_D_phi,  #m
-                "D_conv": default_D_conv,  #m
-                "H": default_H,  
-                "sigma_ref": default_sigma_ref, 
-                "file_suffix": gen_d_file_suffix 
-            })
+                    "T_u": default_T_u,  #K
+                    "T_l": default_T_l,  #K
+                    "T_conv": default_T_conv,  #K
+                    "D_cond": default_D_cond,  #m
+                    "D_phi": default_D_phi,  #m
+                    "D_conv": default_D_conv,  #m
+                    "H": default_H,  
+                    "sigma_ref": default_sigma_ref, 
+                    "file_suffix": gen_d_file_suffix,
+                    "use_shannon_channel_limit":scl
+                })
 
-    # With a limit of size Europas do the same
-    max_D_cond = 10.4e3 + 5.8e3
-    max_D_conv = 5.8e3 + 6.3e3
-    for eta_vac in [0.1, 0.3]:
-        for rho_salt in [1e-3, 4.2e-2]:
-            gen_d_file_suffix = f"_{max_D_conv}_{max_D_conv}_porosity{eta_vac}_saltfraction{rho_salt:.1e}".replace('.', 'p') 
-            dictionary_list.append({
-                "eta_vac": eta_vac,  # porosity
-                "rho_salt": rho_salt,  # salt fraction
-                "D_cond": max_D_cond,  #m
-                "D_phi": 0.43*max_D_cond,  #m
-                "D_conv": max_D_conv,#m
+        # With a limit of size Europas do the same
+        max_D_cond = 10.4e3 + 5.8e3
+        max_D_conv = 5.8e3 + 6.3e3
+        for eta_vac in [0.1, 0.3]:
+            for rho_salt in [1e-3, 4.2e-2]:
+                gen_d_file_suffix = f"{scl_string}_{max_D_conv}_{max_D_conv}_porosity{eta_vac}_saltfraction{rho_salt:.1e}".replace('.', 'p') 
+                dictionary_list.append({
+                    "eta_vac": eta_vac,  # porosity
+                    "rho_salt": rho_salt,  # salt fraction
+                    "D_cond": max_D_cond,  #m
+                    "D_phi": 0.43*max_D_cond,  #m
+                    "D_conv": max_D_conv,#m
 
-                "T_u": default_T_u,  #K
-                "T_l": default_T_l,  #K
-                "T_conv": default_T_conv,  #K
+                    "T_u": default_T_u,  #K
+                    "T_l": default_T_l,  #K
+                    "T_conv": default_T_conv,  #K
 
-                "H": default_H,  
-                "sigma_ref": default_sigma_ref, 
+                    "H": default_H,  
+                    "sigma_ref": default_sigma_ref, 
 
-                "file_suffix": gen_d_file_suffix
-            })
+                    "file_suffix": gen_d_file_suffix,
+                    
+                    "use_shannon_channel_limit":scl
+                })
 
     df = pd.DataFrame(dictionary_list)
     df['idx'] = df.index
@@ -149,6 +156,7 @@ if __name__ == "__main__":
         sigma_ref = row["sigma_ref"]
         file_suffix = row["file_suffix"]
         delta_d = 10 #m
+        use_shannon_channel_limit = row["use_shannon_channel_limit"]
 
         try:
             results = evaluate_number_of_pucks_on_arbitrary_europa(
@@ -157,7 +165,7 @@ if __name__ == "__main__":
                         eta_vac, rho_salt, 
                         D_conv, delta_d, 
                         H, sigma_ref,
-                        file_suffix)
+                        file_suffix, use_shannon_channel_limit)
         finally:
             # Increment completed job count
             with lock:  # Use a lock to prevent race conditions
