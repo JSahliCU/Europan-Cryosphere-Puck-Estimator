@@ -169,7 +169,8 @@ if __name__ == "__main__":
                         eta_vac, rho_salt, 
                         D_conv, delta_d, 
                         H, sigma_ref,
-                        file_suffix, use_shannon_channel_limit, comm_bw)
+                        file_suffix, use_shannon_channel_limit, 
+                        comm_bw, comm_bw)
         finally:
             # Increment completed job count
             with lock:  # Use a lock to prevent race conditions

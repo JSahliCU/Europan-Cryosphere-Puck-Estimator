@@ -47,7 +47,12 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
         delta_d = 10, #m
         H = 0.75, # Surface roughness hurst coefficient
         sigma_ref = 0.2, # Surface roughness at reference wavelength (at 1m)
-        file_suffix = ''
+        file_suffix = '',
+        use_shannon_channel_limit=False,
+        HF_communication_bandwidth=10e3,
+        UHF_communication_bandwidth=10e3,
+        HF_M_symbols=2,
+        UHF_M_symbols=2
     ):
     
     eim = europa_ice_model(
@@ -208,7 +213,7 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
     # Estimate the puck placement at UHF
     uhf_pucks, uhf_pucks_cond, uhf_pucks_conv = estimate_puck_placement(
         1,
-        10e3,
+        UHF_communication_bandwidth,
         uhf_antenna(), #antenna_pattern type
         mm.high_band_f,
         1e3,
@@ -217,14 +222,15 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
         eim,
         'T_A Upwelling High Band (K)',
         'T_A Downwelling High Band (K)',
-        2,
+        UHF_M_symbols,
         True,
-        file_suffix
+        file_suffix,
+        use_shannon_channel_limit
     )
 
     hf_pucks, hf_pucks_cond, hf_pucks_conv = estimate_puck_placement(
         1,
-        10e3,
+        HF_communication_bandwidth,
         hf_antenna(), #antenna_pattern type
         mm.low_band_f,
         1e3,
@@ -233,9 +239,10 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
         eim,
         'T_A Upwelling Low Band (K)',
         'T_A Downwelling Low Band (K)',
-        2,
+        HF_M_symbols,
         True,
-        file_suffix
+        file_suffix,
+        use_shannon_channel_limit
     )
     return uhf_pucks, uhf_pucks_cond, uhf_pucks_conv, hf_pucks, hf_pucks_cond, hf_pucks_conv
 
@@ -549,7 +556,8 @@ def estimate_puck_placement(
     T_A_downwelling_col,
     symbols,
     record_puck_placement_data,
-    file_suffix
+    file_suffix,
+    use_shannon_channel_limit,
 ):
     eim = cryosphere_model
     receiver_temperature = 290 * (math_funcs.db_2_power(noise_figure) - 1)
@@ -596,7 +604,7 @@ def estimate_puck_placement(
                 T_A_downwelling,
                 rad_eff,
                 match_eff,
-                temperature_ice,
+                temperature_ice
         ):
             received_power = transmitter_power * upper_gain * lower_gain \
                 *  (lambda_s**2 / (4 * np.pi * prop_distance)**2)\
@@ -610,8 +618,15 @@ def estimate_puck_placement(
             noise_power = k * sys_temp * communication_bandwidth 
 
             signal_to_noise_ratio = received_power / noise_power
-            CNR_per_bit = (data_rate/communication_bandwidth) * signal_to_noise_ratio
-            probability_of_error = probability_of_error_for_MFSK(CNR_per_bit, symbols)
+
+            if use_shannon_channel_limit:
+                if 2**(data_rate/communication_bandwidth) - 1 < signal_to_noise_ratio:
+                    probability_of_error = 0
+                else:
+                    probability_of_error = 1
+            else:
+                CNR_per_bit = (data_rate/communication_bandwidth) * signal_to_noise_ratio
+                probability_of_error = probability_of_error_for_MFSK(CNR_per_bit, symbols)
 
             return probability_of_error
         
