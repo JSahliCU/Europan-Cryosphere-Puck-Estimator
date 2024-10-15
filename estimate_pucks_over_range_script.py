@@ -54,8 +54,8 @@ if __name__ == "__main__":
     # })
 
     # with a range of salts and vacuum fractions
-    for comm_bw in [10e3, 100e3, 1e6]:
-        for scl in [False, True]:
+    for comm_bw in [10e3]:#[10e3, 100e3, 1e6]:
+        for scl in [False]: #[False, True]:
             scl_string = ''
             if scl:
                 scl_string = 'sc'
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     print(f'Generated {total_jobs} Europa scenarios. Saved scenarios to number_of_pucks_estimates.csv')
     df.to_csv('number_of_pucks_estimates.csv')
     
-    print(f'Launching {mp.cpu_count()+1} worker processes...')
+    print(f'Launching {mp.cpu_count()} worker processes...')
     # handle raised errors
     def handle_error(error):
         print(error, flush=True)
@@ -131,7 +131,7 @@ if __name__ == "__main__":
             with lock:
                 last_progress_value = progress.value
             elapsed_time = time.time() - start_time
-            running_workers = mp.cpu_count()+1
+            running_workers = mp.cpu_count()
             
             print(f"\rTotal jobs: {total_jobs}, "
                 f"Jobs completed: {last_progress_value}, "

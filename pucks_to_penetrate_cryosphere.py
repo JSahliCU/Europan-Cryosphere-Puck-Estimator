@@ -599,7 +599,8 @@ def estimate_puck_placement(
         prop_distance += eim.delta_d
 
         def calc_prob_error(
-                lambda_s,
+                lambda_s_receiver,
+                lambda_s_transmitter,
                 T_A_upwelling,
                 T_A_downwelling,
                 rad_eff,
@@ -607,8 +608,8 @@ def estimate_puck_placement(
                 temperature_ice
         ):
             received_power = transmitter_power * upper_gain * lower_gain \
-                *  (lambda_s**2 / (4 * np.pi * prop_distance)**2)\
-                * attenuation
+                *  (lambda_s_receiver**2 / (4 * np.pi * prop_distance)**2)\
+                * attenuation * (lambda_s_transmitter / lambda_s_receiver)
             
             ant_temp = rad_eff * match_eff * T_A_upwelling\
                 + rad_eff * match_eff * T_A_downwelling\
@@ -631,12 +632,14 @@ def estimate_puck_placement(
             return probability_of_error
         
         place_puck = False
-        if d == 0:
+        if d == 0 or d==len(eim.cryosphere_model_df)-1:
             place_puck = True
         else:
+            lower_lambda_s = lambda_s
             # Estimate SNR at upper puck
             upper_prob_error = calc_prob_error(
                 upper_lambda_s,
+                lower_lambda_s,
                 upper_T_A_upwelling,
                 upper_T_A_downwelling * ant_backside_exists,
                 upper_rad_eff,
@@ -644,10 +647,9 @@ def estimate_puck_placement(
                 upper_ice_temp
             )
             # Estimate SNR at lower puck
-            lower_lambda_s = lambda_s
-
             lower_prob_error = calc_prob_error(
                 lower_lambda_s,
+                upper_lambda_s,
                 lower_T_A_upwelling * ant_backside_exists,
                 lower_T_A_downwelling,
                 lower_rad_eff,
