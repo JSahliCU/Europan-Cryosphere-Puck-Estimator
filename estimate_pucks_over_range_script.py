@@ -83,7 +83,7 @@ if __name__ == "__main__":
             max_D_cond = 10.4e3 + 5.8e3
             max_D_conv = 5.8e3 + 6.3e3
             for eta_vac in [0.1, 0.3]:
-                for rho_salt in [1e-3, 4.2e-2]:
+                for rho_salt in [0, 1e-3, 4.2e-2]:
                     gen_d_file_suffix = f"{comm_bw}{scl_string}_{max_D_conv}_{max_D_conv}_porosity{eta_vac}_saltfraction{rho_salt:.1e}".replace('.', 'p') 
                     dictionary_list.append({
                         "eta_vac": eta_vac,  # porosity
