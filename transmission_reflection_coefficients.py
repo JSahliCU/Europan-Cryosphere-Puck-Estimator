@@ -52,7 +52,7 @@ def transmissivity_fBm(
         debug (bool, optional): Enables debug mode. Defaults to False.
 
     Returns:
-        float: transmissivity coefficient for an fBm surface described by sigma_A, H at the bistatic polarization
+        float: transmissivity coefficient for an fBm surface described by sigma_A, H at the bistatic polarization as field quantities
     """
 
     # Evaluate constants
@@ -136,7 +136,7 @@ def reflectivity_fBm(
         debug (bool, optional): Enables debug mode. Defaults to False.
 
     Returns:
-        float: reflectivity coefficient for an fBm surface described by sigma_A, H at the bistatic polarization
+        float: reflectivity coefficient for an fBm surface described by sigma_A, H at the bistatic polarization as field quantities
     """
     # Evaluate constants
     lambda_i = c / (f * np.sqrt(epsilon_i_prime)) 
@@ -186,7 +186,7 @@ def fresnel_coefficients(n_i, n_t, theta_i):
         theta_i (float): incident angle of the wave front measured from the normal of medium interface
 
     Returns:
-        float, float: Vertical and horizontal fresnel coefficients, respectively
+        float, float: Vertical and horizontal fresnel coefficients, respectively as field quantities
     """
     sin_theta_t = n_i * np.sin(theta_i) / n_t
     # Case of total internal reflection
@@ -226,7 +226,7 @@ def bistatic_scattering_coefficients(
         bistatic_polarization (str): 'vv', 'hv', 'vh' or 'hh'
 
     Returns:
-        float : bistatic fresnel scattering coefficients
+        float : bistatic fresnel scattering coefficients as field quantities
     """
 
     n_i = np.sqrt(epsilon_i_prime * epsilon_0 * mu_0)
@@ -270,7 +270,7 @@ def bistatic_transmission_coefficients(
         bistatic_polarization (str): 'vv', 'hv', 'vh' or 'hh'
 
     Returns:
-        float : bistatic Fresnel scattering coefficients
+        float : bistatic Fresnel scattering coefficients as field quantities
     """
     eta_i = np.sqrt(mu_0 / (epsilon_i_prime * epsilon_0))
     eta_t = np.sqrt(mu_0 / (epsilon_t_prime * epsilon_0))
@@ -467,7 +467,7 @@ def transmissivity_gaussian(
         debug (bool, optional): Turns on debug information. Defaults to False.
 
     Returns:
-        float: bistatic transmissivity coefficient of gaussian surface
+        float: bistatic transmissivity coefficient of gaussian surface as field quantities
     """
 
     lambda_i = c / (f * np.sqrt(epsilon_i_prime)) 
@@ -541,7 +541,7 @@ def reflectivity_gaussian(
         debug (bool, optional): Turns on debug information. Defaults to False.
 
     Returns:
-        float: bistatic reflectivity coefficient of gaussian surface
+        float: bistatic reflectivity coefficient of gaussian surface as field quantities
     """
 
     # Evaluate constants
@@ -661,7 +661,7 @@ def reflectivity_lambertian(
         debug (bool, optional): Turns on extra debug information. Defaults to False.
 
     Returns:
-        float: Lambertian reflectivity
+        float: Lambertian reflectivity as field quantities
     """
     return np.cos(theta_s)*np.cos(theta_i)
 
@@ -678,10 +678,10 @@ def transmissivity_lambertian(
         theta_i (float): incident angle
         theta_t (float): transmitted angle
         bistatic_polarization (str): 'vv', 'vh', 'hv', or 'hh'
-        debug (bool, optional): Turns on extra debug information. Defaults to False.
+        debug (bool, optional): Turns on extra debug information. Defaults to False. 
 
     Returns:
-        float: Lambertian reflectivity
+        float: Lambertian reflectivity as field quantities
     """
 
     return 1 - reflectivity_lambertian(
