@@ -14,7 +14,7 @@ from scipy.special import loggamma, factorial, gamma
 from decimal import Decimal
 import decimal
 
-from antenna_patterns import antenna
+from antenna_patterns import uhf_antenna, hf_antenna
 from transmission_reflection_coefficients import transmissivity_fBm, reflectivity_fBm
 from T_B_Europan_sky import angle_grid, T_B_sub_jovian_point, T_B_anti_jovian_point, T_B_anti_orbital_point
 
@@ -69,8 +69,8 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
     )
 
     mm = mission_model()
-    ant = antenna()
-
+    uhf_ant = uhf_antenna()
+    hf_ant = hf_antenna()
     ag = angle_grid(10, 10)
 
     # Evaluation of the sub-Jovian point on Europa
@@ -107,10 +107,10 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
     # Calculate the downwelling noise stream
     eim.cryosphere_model_df['T_A Downwelling Low Band (K)'], \
         T_Bh_d_low_band, T_Bv_d_low_band = calc_welling_noise_stream(
-        'down', mm.low_band_f, eim, ag, T_Bh_low_band, T_Bv_low_band, ant.HF_directivity_pattern_RHCP)
+        'down', mm.low_band_f, eim, ag, T_Bh_low_band, T_Bv_low_band, hf_ant.directivity_pattern_RHCP)
     eim.cryosphere_model_df['T_A Downwelling High Band (K)'], \
         T_Bh_d_high_band, T_Bv_d_high_band = calc_welling_noise_stream(
-        'down', mm.high_band_f, eim, ag, T_Bh_high_band, T_Bv_high_band, ant.UHF_directivity_pattern_RHCP)
+        'down', mm.high_band_f, eim, ag, T_Bh_high_band, T_Bv_high_band, uhf_ant.directivity_pattern_RHCP)
 
     # Estimate of the oceans emissivity using reflection
     epsilon_ocean_prime = 77 # Roger Lang
@@ -168,12 +168,12 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
         T_Bh_d_low_band, T_Bv_d_low_band = calc_welling_noise_stream(
         'up', mm.low_band_f, eim, ag, 
         T_Bh_ocean_low_band , T_Bv_ocean_low_band ,
-        ant.HF_directivity_pattern_RHCP)
+        hf_ant.directivity_pattern_RHCP)
     eim.cryosphere_model_df['T_A Upwelling High Band (K)'], \
         T_Bh_d_high_band, T_Bv_d_high_band = calc_welling_noise_stream(
         'up', mm.high_band_f, eim, ag, 
         T_Bh_ocean_high_band, T_Bv_ocean_high_band,
-        ant.UHF_directivity_pattern_RHCP)
+        uhf_ant.directivity_pattern_RHCP)
 
     # Calculate the downwelling noise stream including the upwelling noise stream reflection
     # Low band
@@ -201,13 +201,13 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
         'down', mm.low_band_f, eim, ag, 
         T_Bh_low_band + T_Bh_low_band_ref, 
         T_Bv_low_band + T_Bv_low_band_ref, 
-        ant.HF_directivity_pattern_RHCP)
+        hf_ant.directivity_pattern_RHCP)
     eim.cryosphere_model_df['T_A Downwelling High Band (K)'], \
         T_Bh_d_high_band, T_Bv_d_high_band = calc_welling_noise_stream(
         'down', mm.high_band_f, eim, ag, 
         T_Bh_high_band + T_Bh_high_band_ref, 
         T_Bv_high_band + T_Bv_high_band_ref, 
-        ant.UHF_directivity_pattern_RHCP)
+        uhf_ant.directivity_pattern_RHCP)
 
     # ------- Now estimate the puck placements -----------
     # Estimate the puck placement at UHF
@@ -378,68 +378,6 @@ def calc_welling_noise_stream(
             x=np.deg2rad(ag.theta))
         
     return T_A, T_Bh_d, T_Bv_d
-
-class antenna_pattern:
-    def __init__(
-        self, 
-        carrier_frequency,
-        ):
-        self.carrier_frequency = carrier_frequency
-
-    def directivity(self, theta, phi, T):
-        return 0.0
-    
-    def radiation_efficiency(self, T):
-        return 0.0
-    
-    def matching_efficiency(self, T):
-        return 0.0
-
-    def realized_gain(self, T):
-        return self.directivity(0, 0, T) \
-            * self.radiation_efficiency(T) * self.matching_efficiency(T)
-
-class uhf_antenna(antenna_pattern):
-    def __init__(self):
-        super().__init__(carrier_frequency = 413e6)
-
-    def directivity(self, theta, phi, T):
-        if theta == 0:
-            directivity_in_100K_ice = 4.64 # dB
-            directivity_in_273K_ice = 4.46 # dB
-            m, b = math_funcs.linear_fit(
-                100, math_funcs.db_2_power(directivity_in_100K_ice), 
-                273, math_funcs.db_2_power(directivity_in_273K_ice))
-            return m * T + b # Units of power
-        elif theta == 180:
-            return 0
-        else:
-            raise ValueError("Not defined theta angle passed")
-
-    def radiation_efficiency(self, T):
-        rad_eff_in_273K_ice = 0.228 # dB
-        rad_eff_in_100K_ice = 0.223 # dB
-        m, b = math_funcs.linear_fit(
-            100, rad_eff_in_100K_ice, 
-            273, rad_eff_in_273K_ice)
-        return m * T + b
-
-    def matching_efficiency(self, T):
-        return 0.952
-
-
-class hf_antenna(antenna_pattern):
-    def __init__(self):
-        super().__init__(carrier_frequency =5.373e6)
-
-    def directivity(self, theta, phi, T):
-        return  math_funcs.db_2_power(1.73) # Units of power
-    
-    def radiation_efficiency(self, T):
-        return 0.007
-    
-    def matching_efficiency(self, T):
-        return 1
 
 class mission_model:
     def __init__(self,
