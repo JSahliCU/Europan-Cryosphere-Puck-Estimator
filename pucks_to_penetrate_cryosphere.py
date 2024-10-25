@@ -52,7 +52,8 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
         HF_communication_bandwidth=10e3,
         UHF_communication_bandwidth=10e3,
         HF_M_symbols=2,
-        UHF_M_symbols=2
+        UHF_M_symbols=2,
+        puck_RF_power=1.0#W
     ):
     
     eim = europa_ice_model(
@@ -212,7 +213,7 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
     # ------- Now estimate the puck placements -----------
     # Estimate the puck placement at UHF
     uhf_pucks, uhf_pucks_cond, uhf_pucks_conv = estimate_puck_placement(
-        1,
+        puck_RF_power,
         UHF_communication_bandwidth,
         uhf_antenna(), #antenna_pattern type
         mm.high_band_f,
@@ -229,7 +230,7 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
     )
 
     hf_pucks, hf_pucks_cond, hf_pucks_conv = estimate_puck_placement(
-        1,
+        puck_RF_power,
         HF_communication_bandwidth,
         hf_antenna(), #antenna_pattern type
         mm.low_band_f,

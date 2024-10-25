@@ -255,7 +255,7 @@ class hf_antenna(antenna_pattern):
         return  db_2_power(1.73) # Units of power
     
     def radiation_efficiency(self, T):
-        return 0.007
+        return 0.011
     
     def matching_efficiency(self, T):
         return 1
