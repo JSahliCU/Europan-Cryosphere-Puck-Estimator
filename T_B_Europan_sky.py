@@ -25,10 +25,10 @@ from scipy.constants import (
 )
 
 #Define coldspace, jovian, gal radiation field for a mission 
-T_B_J_low_band = 10**11 #K
-T_B_J_high_band = 10**2 # K
-T_B_gal_low_band = 10**7 # K
-T_B_gal_high_band = T_B_J_high_band
+T_A_DAM_low_band = 10**11 #K
+T_A_DIM_high_band = 10**2 #K
+T_A_gal_low_band = 10**7 # K
+T_A_gal_high_band = T_A_DIM_high_band
 T_B_coldspace = 2.7 #K
 
 # Define a function to resample to the 1 deg find 
@@ -56,7 +56,31 @@ class angle_grid:
         return self.theta, self.phi, \
             self.phi_grid, self.theta_grid
 
+def deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A):
+
+    theta, phi, \
+        phi_grid, theta_grid  = ag.get_angle_grid()
+
+    # Integrate the weighting pattern and the directivity 
+    # of the antenna from the Cecconi paper
+    sum_v = 0 
+    sum_h = 0
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+        
+        dsteradians = np.abs(np.sin(theta)) * ag.dtheta_rad * ag.dphi_rad
+        
+        sum_v += W_v[i] * (3/2) * (np.sin(theta))**2 * dsteradians
+        sum_h += W_h[i] * (3/2) * (np.sin(theta))**2 * dsteradians
+
+    T_Bv = W_v * 4 * np.pi * T_A / sum_v / 2 
+    T_Bh = W_h * 4 * np.pi * T_A / sum_h / 2
+    
+    return T_Bv, T_Bh
+
 def resample_course(T_B, return_grids=False):
+    # TODO Magic numbers galore in this one... probably should parameterize this if I get a chance
     # Define the course theta and phi sampling grid
     theta_resample, phi_resample, \
         phi_grid_resample, theta_grid_resample = angle_grid(10, 10).get_angle_grid()
@@ -86,8 +110,9 @@ def resample_course(T_B, return_grids=False):
 # Brightness Field For the SubJovian point
 def T_B_sub_jovian_point():
     # Define the theta and phi fine sampling grid
+    ag = angle_grid(1, 1)
     theta, phi, \
-        phi_grid, theta_grid  = angle_grid(1, 1).get_angle_grid()
+        phi_grid, theta_grid  = ag.get_angle_grid()
 
     # Define the brightness grid with vertical and horizontal polarization
     T_Bv_low_band = np.zeros_like(theta_grid, dtype=float).flatten()
@@ -95,38 +120,88 @@ def T_B_sub_jovian_point():
     T_Bv_high_band = np.zeros_like(theta_grid, dtype=float).flatten()
     T_Bh_high_band = np.zeros_like(theta_grid, dtype=float).flatten()
 
+    # DAM radiation illumination 
+    # from aural regions of jupiter visible only 1 degree
+    # And only at the low band
+    W_v = np.zeros_like(theta_grid, dtype=float).flatten()
+    W_h = np.zeros_like(theta_grid, dtype=float).flatten()
+
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+        if theta == 6:
+            if phi == 0 or phi == 180:
+                W_v[i] = 1 
+                W_h[i] = 1 
+    T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_DAM_low_band)
+
+    T_Bv_low_band += T_Bv
+    T_Bh_low_band += T_Bh
+
+    # DIM radiation illumination 
+    # from jupiter itself directly
+    # Only really visible in the high band
+    W_v = np.zeros_like(theta_grid, dtype=float).flatten()
+    W_h = np.zeros_like(theta_grid, dtype=float).flatten()
+
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+        if theta <= 6:
+            W_v[i] = 1 
+            W_h[i] = 1 
+
+    T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_DIM_high_band)
+
+    T_Bv_high_band += T_Bv
+    T_Bh_high_band += T_Bh
+
+    # Draw the galactic background
+    # Low band
+    W_v = np.zeros_like(theta_grid, dtype=float).flatten()
+    W_h = np.zeros_like(theta_grid, dtype=float).flatten()
+
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+        if theta >= 105 and theta <= 135:
+            if phi >= 180 and phi <= 360:
+                W_v[i] = 1 
+                W_h[i] = 1 
+
+    T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_gal_low_band)
+
+    T_Bv_low_band += T_Bv
+    T_Bh_low_band += T_Bh
+
+    # Draw the galactic background
+    # High band
+    W_v = np.zeros_like(theta_grid, dtype=float).flatten()
+    W_h = np.zeros_like(theta_grid, dtype=float).flatten()
+
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+        if theta >= 105 and theta <= 135:
+            if phi >= 180 and phi <= 360:
+                W_v[i] = 1 
+                W_h[i] = 1
+
+    T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_gal_high_band)
+
+    T_Bv_high_band += T_Bv
+    T_Bh_high_band += T_Bh
+
+    # Addition of cold space background everywhere
     for i in np.arange(theta_grid.size):
         theta = theta_grid.flatten()[i]
         phi = phi_grid.flatten()[i]
         
-        # Addition of cold space background everywhere
+        
         T_Bv_low_band[i] += 0.5 * T_B_coldspace
         T_Bh_low_band[i] += 0.5 * T_B_coldspace
         T_Bv_high_band[i] += 0.5 * T_B_coldspace
         T_Bh_high_band[i] += 0.5 * T_B_coldspace
-
-        # Draw the galactic background
-        if theta >= 105 and theta <= 135:
-            if phi >= 180 and phi <= 360:
-                T_Bv_low_band[i] += 0.5 * T_B_gal_low_band
-                T_Bh_low_band[i] += 0.5 * T_B_gal_low_band
-                T_Bv_high_band[i] += 0.5 * T_B_gal_high_band
-                T_Bh_high_band[i] += 0.5 * T_B_gal_high_band
-
-        # DAM radiation illumination 
-        # from aural regions of jupiter visible only 1 degree
-        # And only at the low band
-        if theta == 6:
-            if phi == 0 or phi == 180:
-                T_Bv_low_band[i] += 0.5 * T_B_J_low_band
-                T_Bh_low_band[i] += 0.5 * T_B_J_low_band
-
-        # DIM radiation illumination 
-        # from jupiter itself directly
-        # Only really visible in the high band
-        if theta <= 6:
-            T_Bv_high_band[i] += 0.5 * T_B_J_high_band
-            T_Bh_high_band[i] += 0.5 * T_B_J_high_band
 
     T_Bv_low_band = resample_course(T_Bv_low_band.reshape(theta_grid.shape))
     T_Bh_low_band = resample_course(T_Bh_low_band.reshape(theta_grid.shape))
@@ -138,8 +213,9 @@ def T_B_sub_jovian_point():
 # Brightness Field For the AntiJovian point
 def T_B_anti_jovian_point():
     # Define the theta and phi fine sampling grid
+    ag = angle_grid(1, 1)
     theta, phi, \
-        phi_grid, theta_grid  = angle_grid(1, 1).get_angle_grid()
+        phi_grid, theta_grid  = ag.get_angle_grid()
 
     # Define the brightness grid with vertical and horizontal polarization
     T_Bv_low_band = np.zeros_like(theta_grid, dtype=float).flatten()
@@ -147,38 +223,88 @@ def T_B_anti_jovian_point():
     T_Bv_high_band = np.zeros_like(theta_grid, dtype=float).flatten()
     T_Bh_high_band = np.zeros_like(theta_grid, dtype=float).flatten()
 
+    # DAM radiation illumination 
+    # from aural regions of jupiter visible only 1 degree
+    # And only at the low band
+    W_v = np.zeros_like(theta_grid, dtype=float).flatten()
+    W_h = np.zeros_like(theta_grid, dtype=float).flatten()
+
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+        if theta == 174:
+            if phi == 0 or phi == 180:
+                W_v[i] = 1 
+                W_h[i] = 1 
+    T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_DAM_low_band)
+
+    T_Bv_low_band += T_Bv
+    T_Bh_low_band += T_Bh
+
+    # DIM radiation illumination 
+    # from jupiter itself directly
+    # Only really visible in the high band
+    W_v = np.zeros_like(theta_grid, dtype=float).flatten()
+    W_h = np.zeros_like(theta_grid, dtype=float).flatten()
+
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+        if theta >= 174:
+            W_v[i] = 1 
+            W_h[i] = 1 
+
+    T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_DIM_high_band)
+
+    T_Bv_high_band += T_Bv
+    T_Bh_high_band += T_Bh
+
+    # Draw the galactic background
+    # Low band
+    W_v = np.zeros_like(theta_grid, dtype=float).flatten()
+    W_h = np.zeros_like(theta_grid, dtype=float).flatten()
+
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+        if theta >= 45 and theta <= 75:
+            if phi >= 0 and phi <= 180:
+                W_v[i] = 1 
+                W_h[i] = 1 
+
+    T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_gal_low_band)
+
+    T_Bv_low_band += T_Bv
+    T_Bh_low_band += T_Bh
+
+    # Draw the galactic background
+    # High band
+    W_v = np.zeros_like(theta_grid, dtype=float).flatten()
+    W_h = np.zeros_like(theta_grid, dtype=float).flatten()
+
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+        if theta >= 45 and theta <= 75:
+            if phi >= 0 and phi <= 180:
+                W_v[i] = 1 
+                W_h[i] = 1
+
+    T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_gal_high_band)
+
+    T_Bv_high_band += T_Bv
+    T_Bh_high_band += T_Bh
+
+    # Addition of cold space background everywhere
     for i in np.arange(theta_grid.size):
         theta = theta_grid.flatten()[i]
         phi = phi_grid.flatten()[i]
         
-        # Addition of cold space background everywhere
+        
         T_Bv_low_band[i] += 0.5 * T_B_coldspace
         T_Bh_low_band[i] += 0.5 * T_B_coldspace
         T_Bv_high_band[i] += 0.5 * T_B_coldspace
         T_Bh_high_band[i] += 0.5 * T_B_coldspace
-
-        # Draw the galactic background
-        if theta >= 45 and theta <= 75:
-            if phi >= 0 and phi <= 180:
-                T_Bv_low_band[i] += 0.5 * T_B_gal_low_band
-                T_Bh_low_band[i] += 0.5 * T_B_gal_low_band
-                T_Bv_high_band[i] += 0.5 * T_B_gal_high_band
-                T_Bh_high_band[i] += 0.5 * T_B_gal_high_band
-
-        # DAM radiation illumination 
-        # from aural regions of jupiter visible only 1 degree
-        # And only at the low band
-        if theta == 174:
-            if phi == 0 or phi == 180:
-                T_Bv_low_band[i] += 0.5 * T_B_J_low_band
-                T_Bh_low_band[i] += 0.5 * T_B_J_low_band
-
-        # DIM radiation illumination 
-        # from jupiter itself directly
-        # Only really visible in the high band
-        if theta >= 174:
-                T_Bv_high_band[i] += 0.5 * T_B_J_high_band
-                T_Bh_high_band[i] += 0.5 * T_B_J_high_band
 
     T_Bv_low_band = resample_course(T_Bv_low_band.reshape(theta_grid.shape))
     T_Bh_low_band = resample_course(T_Bh_low_band.reshape(theta_grid.shape))
@@ -190,8 +316,9 @@ def T_B_anti_jovian_point():
 # Brightness Field For the AntiOrbital point
 def T_B_anti_orbital_point():
     # Define the theta and phi fine sampling grid
+    ag = angle_grid(1, 1)
     theta, phi, \
-        phi_grid, theta_grid  = angle_grid(1, 1).get_angle_grid()
+        phi_grid, theta_grid  = ag.get_angle_grid()
 
     # Define the brightness grid with vertical and horizontal polarization
     T_Bv_low_band = np.zeros_like(theta_grid, dtype=float).flatten()
@@ -199,39 +326,89 @@ def T_B_anti_orbital_point():
     T_Bv_high_band = np.zeros_like(theta_grid, dtype=float).flatten()
     T_Bh_high_band = np.zeros_like(theta_grid, dtype=float).flatten()
 
+    # DAM radiation illumination 
+    # from aural regions of jupiter visible only 1 degree
+    # And only at the low band
+    W_v = np.zeros_like(theta_grid, dtype=float).flatten()
+    W_h = np.zeros_like(theta_grid, dtype=float).flatten()
+
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+        if theta == 96 or theta == 84:
+            if phi == 270:
+                W_v[i] = 1 
+                W_h[i] = 1 
+    T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_DAM_low_band)
+
+    T_Bv_low_band += T_Bv
+    T_Bh_low_band += T_Bh
+
+    # DIM radiation illumination 
+    # from jupiter itself directly
+    # Only really visible in the high band
+    W_v = np.zeros_like(theta_grid, dtype=float).flatten()
+    W_h = np.zeros_like(theta_grid, dtype=float).flatten()
+
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+        if theta >= 84 and theta <= 96:
+            if phi >= 264 and phi <= 276:
+                W_v[i] = 1 
+                W_h[i] = 1 
+
+    T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_DIM_high_band)
+
+    T_Bv_high_band += T_Bv
+    T_Bh_high_band += T_Bh
+
+    # Draw the galactic background
+    # Low band
+    W_v = np.zeros_like(theta_grid, dtype=float).flatten()
+    W_h = np.zeros_like(theta_grid, dtype=float).flatten()
+
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+        if theta >= 15 and theta <= 45:
+            if phi >= 0 and phi <= 180:
+                W_v[i] = 1 
+                W_h[i] = 1 
+
+    T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_gal_low_band)
+
+    T_Bv_low_band += T_Bv
+    T_Bh_low_band += T_Bh
+
+    # Draw the galactic background
+    # High band
+    W_v = np.zeros_like(theta_grid, dtype=float).flatten()
+    W_h = np.zeros_like(theta_grid, dtype=float).flatten()
+
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+        if theta >= 15 and theta <= 45:
+            if phi >= 0 and phi <= 180:
+                W_v[i] = 1 
+                W_h[i] = 1
+
+    T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_gal_high_band)
+
+    T_Bv_high_band += T_Bv
+    T_Bh_high_band += T_Bh
+
+    # Addition of cold space background everywhere
     for i in np.arange(theta_grid.size):
         theta = theta_grid.flatten()[i]
         phi = phi_grid.flatten()[i]
         
-        # Addition of cold space background everywhere
+        
         T_Bv_low_band[i] += 0.5 * T_B_coldspace
         T_Bh_low_band[i] += 0.5 * T_B_coldspace
         T_Bv_high_band[i] += 0.5 * T_B_coldspace
         T_Bh_high_band[i] += 0.5 * T_B_coldspace
-
-        # Draw the galactic background
-        if theta >= 15 and theta <= 45:
-            if phi >= 0 and phi <= 180:
-                T_Bv_low_band[i] += 0.5 * T_B_gal_low_band
-                T_Bh_low_band[i] += 0.5 * T_B_gal_low_band
-                T_Bv_high_band[i] += 0.5 * T_B_gal_high_band
-                T_Bh_high_band[i] += 0.5 * T_B_gal_high_band
-
-        # DAM radiation illumination 
-        # from aural regions of jupiter visible only 1 degree
-        # And only at the low band
-        if theta == 96 or theta == 84:
-            if phi == 270:
-                T_Bv_low_band[i] += 0.5 * T_B_J_low_band
-                T_Bh_low_band[i] += 0.5 * T_B_J_low_band
-
-        # DIM radiation illumination 
-        # from jupiter itself directly
-        # Only really visible in the high band
-        if theta >= 84 and theta <= 96:
-            if phi >= 264 and phi <= 276:
-                T_Bv_high_band[i] += 0.5 * T_B_J_high_band
-                T_Bh_high_band[i] += 0.5 * T_B_J_high_band
 
     T_Bv_low_band = resample_course(T_Bv_low_band.reshape(theta_grid.shape))
     T_Bh_low_band = resample_course(T_Bh_low_band.reshape(theta_grid.shape))
@@ -241,6 +418,41 @@ def T_B_anti_orbital_point():
     return T_Bv_low_band, T_Bh_low_band, T_Bv_high_band, T_Bh_high_band
 
 if __name__ == "__main__":
+    ag = angle_grid(1, 1)
+    theta, phi, \
+        phi_grid, theta_grid  = ag.get_angle_grid()
+
+    # Draw the galactic background
+    # Low band
+    W_v = np.zeros_like(theta_grid, dtype=float).flatten()
+    W_h = np.zeros_like(theta_grid, dtype=float).flatten()
+
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+        if theta >= 105 and theta <= 135:
+            if phi >= 180 and phi <= 360:
+                W_v[i] = 0.5
+                W_h[i] = 0.5
+
+    T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_gal_low_band)
+
+    T_A = 0
+
+    for i in np.arange(theta_grid.size):
+        theta = theta_grid.flatten()[i]
+        phi = phi_grid.flatten()[i]
+
+        dsteradians = np.abs(np.sin(theta)) * ag.dtheta_rad * ag.dphi_rad
+        
+        T_A += T_Bv[i] * (3/2) * (np.sin(theta))**2 * dsteradians
+        T_A += T_Bh[i] * (3/2) * (np.sin(theta))**2 * dsteradians
+
+    T_A *= (1 / (4* np.pi))
+
+    print(f'Percent error in deconvolve, convolve method: {(T_A - T_A_gal_low_band)*100}%')
+    print(f'{T_A}, and {T_A_gal_low_band}')
+
     for func, title in [
         (T_B_sub_jovian_point, 'Sub-Jovian Point'), 
         (T_B_anti_jovian_point, 'Anti-Jovian Point'),
@@ -263,7 +475,7 @@ if __name__ == "__main__":
 
         plt.figure()
         plt.scatter(U, V, c=10 * np.log10(T_Bv_low_band.reshape(theta_grid_rad.shape)[0:9].flatten())
-            , cmap='viridis', vmin=0, vmax=110)
+            , cmap='viridis', vmin=0, vmax=200)
         plt.colorbar(label='Brightness Temperature (dBK)')
         plt.xlabel('U')
         plt.ylabel('V')
@@ -277,7 +489,7 @@ if __name__ == "__main__":
 
         plt.figure()
         plt.scatter(U, V, c=10 * np.log10(T_Bv_high_band.reshape(theta_grid_rad.shape)[0:9].flatten())
-            , cmap='viridis', vmin=0, vmax=70)
+            , cmap='viridis', vmin=0, vmax=200)
         plt.colorbar(label='Brightness Temperature (dBK)')
         plt.xlabel('U')
         plt.ylabel('V')

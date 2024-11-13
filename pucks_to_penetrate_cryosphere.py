@@ -53,7 +53,8 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
         UHF_communication_bandwidth=10e3,
         HF_M_symbols=2,
         UHF_M_symbols=2,
-        puck_RF_power=1.0#W
+        puck_RF_power=1.0, #W
+        landing_site='sub jovian point'
     ):
     
     eim = europa_ice_model(
@@ -76,11 +77,26 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
 
     # Evaluation of the sub-Jovian point on Europa
     # Rotate the brightness field pattern so we are standing on the sub-jovian point
-    brightness_field_of_europan_sky_vertical_low_band, \
-        brightness_field_of_europan_sky_horizontal_low_band, \
-            brightness_field_of_europan_sky_vertical_high_band, \
-                brightness_field_of_europan_sky_horizontal_high_band \
-                    = T_B_sub_jovian_point()
+    if landing_site == 'sub jovian point':
+        brightness_field_of_europan_sky_vertical_low_band, \
+            brightness_field_of_europan_sky_horizontal_low_band, \
+                brightness_field_of_europan_sky_vertical_high_band, \
+                    brightness_field_of_europan_sky_horizontal_high_band \
+                        = T_B_sub_jovian_point()
+    elif landing_site == 'anti jovian point':
+        brightness_field_of_europan_sky_vertical_low_band, \
+            brightness_field_of_europan_sky_horizontal_low_band, \
+                brightness_field_of_europan_sky_vertical_high_band, \
+                    brightness_field_of_europan_sky_horizontal_high_band \
+                        = T_B_anti_jovian_point()
+    elif landing_site == 'anti orbital point':
+        brightness_field_of_europan_sky_vertical_low_band, \
+            brightness_field_of_europan_sky_horizontal_low_band, \
+                brightness_field_of_europan_sky_vertical_high_band, \
+                    brightness_field_of_europan_sky_horizontal_high_band \
+                        = T_B_anti_orbital_point()
+    else:
+        raise(ValueError('landing_site must be [\'sub jovian point\', \'anti jovian point\', \'anti orbital point\']'))
 
     # Integrate the transmitted field by summing to find transmitted field over all incident fields
     # Low band
