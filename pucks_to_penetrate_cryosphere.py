@@ -458,7 +458,7 @@ class europa_ice_model:
         self.cryosphere_model_df['epsilon_s_prime'] = 3.1884 + 0.00091*(T - 273.13)
         self.cryosphere_model_df['epsilon_s_primeprime'] = 10**(-3.0129 + 0.0123*(T - 273.13))
 
-        # Modify the epsilon s primes by the TVB
+        # Modify the epsilon s primes by the Maxwell-Garnett
         epsilon_s_prime = self.cryosphere_model_df['epsilon_s_prime']
         epsilon_s_primeprime = self.cryosphere_model_df['epsilon_s_primeprime']
         eta_vac = self.cryosphere_model_df['Porosity (m^3/m^3)']

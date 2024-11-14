@@ -26,7 +26,7 @@ if __name__ == "__main__":
     default_T_l = 230 #K
     default_T_conv = 251.6 #K
     default_D_cond = 10.4e3 #m
-    default_D_phi = 3.2e3 #m
+    default_D_phi = 0.43*10.4e3 #m
     default_D_conv = 5.8e3 #m
     default_eta_vac = 0.1 #np.arrange(0, 0.3, 0.1)
     default_rho_salt = 1e-5 #np.linspace(1e-3, 4.2e-2, 10)
