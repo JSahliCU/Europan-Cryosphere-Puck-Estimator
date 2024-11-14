@@ -271,7 +271,7 @@ def calc_path_loss(omega, eta_vac, epsilon_s_prime, epsilon_s_primeprime, sigma_
         / ((2 * epsilon_s + epsilon_0) - eta_vac * (epsilon_0 - epsilon_s))
 
     epsilon_s_prime = np.real(epsilon_m / epsilon_0)
-    epsilon_s_primeprime -1 * np.imag(epsilon_m / epsilon_0)
+    epsilon_s_primeprime = -1 * np.imag(epsilon_m / epsilon_0)
 
     # Apply the loss formula
     return (omega / np.sqrt(2)) * np.sqrt(epsilon_0 * mu_0)\
