@@ -263,9 +263,19 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
     )
     return uhf_pucks, uhf_pucks_cond, uhf_pucks_conv, hf_pucks, hf_pucks_cond, hf_pucks_conv
 
-def calc_path_loss(omega, epsilon_s_prime, epsilon_s_primeprime, sigma_s):
+def calc_path_loss(omega, eta_vac, epsilon_s_prime, epsilon_s_primeprime, sigma_s):
+    
+    # Apply the Maxwell-Garnett Mixing Formula
+    epsilon_s = epsilon_s_prime - 1j * (epsilon_s_primeprime + sigma_s / (epsilon_0 * omega))
+    epsilon_m = epsilon_s + (3 * eta_vac * epsilon_s * (epsilon_0 - epsilon_s)) \
+        / ((2 * epsilon_s + epsilon_0) - eta_vac * (epsilon_0 - epsilon_s))
+
+    epsilon_s_prime = np.real(epsilon_m / epsilon_0)
+    epsilon_s_primeprime -1 * np.imag(epsilon_m / epsilon_0)
+
+    # Apply the loss formula
     return (omega / np.sqrt(2)) * np.sqrt(epsilon_0 * mu_0)\
-        * np.sqrt(np.sqrt(epsilon_s_prime**2 + (epsilon_s_primeprime + sigma_s / (epsilon_0 * omega))**2) \
+        * np.sqrt(np.sqrt(epsilon_s_prime**2 + (epsilon_s_primeprime)**2) \
             - epsilon_s_prime)
 
 def calc_gamma_ab(
@@ -360,9 +370,10 @@ def calc_welling_noise_stream(
     for d in depth_list:
         epsilon_s_prime = eim.cryosphere_model_df.loc[d]['epsilon_s_prime']
         epsilon_s_primeprime = eim.cryosphere_model_df.loc[d]['epsilon_s_primeprime']
+        eta_vac = eim.cryosphere_model_df.loc[d]['Porosity (m^3/m^3)']
         sigma_s = eim.cryosphere_model_df.loc[d]['sigma_s']
         temperature_ice = eim.cryosphere_model_df.loc[d]['Temperature (K)']
-        alpha = calc_path_loss(f, epsilon_s_prime, epsilon_s_primeprime, sigma_s)
+        alpha = calc_path_loss(2 * np.pi * f, eta_vac, epsilon_s_prime, epsilon_s_primeprime, sigma_s)
         
         # The loss is symmetric in phi by homogenous layer assumption
         for t in np.arange(len(ag.theta)):
@@ -458,16 +469,16 @@ class europa_ice_model:
         self.cryosphere_model_df['epsilon_s_prime'] = 3.1884 + 0.00091*(T - 273.13)
         self.cryosphere_model_df['epsilon_s_primeprime'] = 10**(-3.0129 + 0.0123*(T - 273.13))
 
-        # Modify the epsilon s primes by the Maxwell-Garnett
-        epsilon_s_prime = self.cryosphere_model_df['epsilon_s_prime']
-        epsilon_s_primeprime = self.cryosphere_model_df['epsilon_s_primeprime']
-        eta_vac = self.cryosphere_model_df['Porosity (m^3/m^3)']
-        epsilon_s = (epsilon_s_prime - 1j * epsilon_s_primeprime) * epsilon_0
-        epsilon_m = epsilon_s + (3 * eta_vac * epsilon_s * (epsilon_0 - epsilon_s)) \
-            / ((2 * epsilon_s + epsilon_0) - eta_vac * (epsilon_0 - epsilon_s))
+        # # Modify the epsilon s primes by the Maxwell-Garnett
+        # epsilon_s_prime = self.cryosphere_model_df['epsilon_s_prime']
+        # epsilon_s_primeprime = self.cryosphere_model_df['epsilon_s_primeprime']
+        # eta_vac = self.cryosphere_model_df['Porosity (m^3/m^3)']
+        # epsilon_s = (epsilon_s_prime - 1j * epsilon_s_primeprime) * epsilon_0
+        # epsilon_m = epsilon_s + (3 * eta_vac * epsilon_s * (epsilon_0 - epsilon_s)) \
+        #     / ((2 * epsilon_s + epsilon_0) - eta_vac * (epsilon_0 - epsilon_s))
 
-        self.cryosphere_model_df['epsilon_s_prime'] = np.real(epsilon_m / epsilon_0)
-        self.cryosphere_model_df['epsilon_s_primeprime'] = -1 * np.imag(epsilon_m / epsilon_0)
+        # self.cryosphere_model_df['epsilon_s_prime'] = np.real(epsilon_m / epsilon_0)
+        # self.cryosphere_model_df['epsilon_s_primeprime'] = -1 * np.imag(epsilon_m / epsilon_0)
 
         # Estimate the conductivity of the ice
         molar_mass_salt = (35.453 + 22.990) / 1000 # kg/mol
@@ -531,6 +542,7 @@ def estimate_puck_placement(
         epsilon_s_prime = eim.cryosphere_model_df.loc[d]['epsilon_s_prime']
         epsilon_s_primeprime = eim.cryosphere_model_df.loc[d]['epsilon_s_primeprime']
         sigma_s = eim.cryosphere_model_df.loc[d]['sigma_s']
+        eta_vac = eim.cryosphere_model_df.loc[d]['Porosity (m^3/m^3)']
         temperature_ice = eim.cryosphere_model_df.loc[d]['Temperature (K)']
         
         lambda_s = c / (np.sqrt(epsilon_s_prime) * communication_frequency)
@@ -546,7 +558,7 @@ def estimate_puck_placement(
             antenna_pattern.directivity(180, 0, temperature_ice) > 0
         
         alpha = calc_path_loss(
-            2 * np.pi * communication_frequency, epsilon_s_prime, 
+            2 * np.pi * communication_frequency, eta_vac, epsilon_s_prime, 
             epsilon_s_primeprime, sigma_s)
         differential_attenuation = np.e**(-2 * (eim.delta_d) * alpha)
         attenuation *= differential_attenuation
