@@ -469,17 +469,6 @@ class europa_ice_model:
         self.cryosphere_model_df['epsilon_s_prime'] = 3.1884 + 0.00091*(T - 273.13)
         self.cryosphere_model_df['epsilon_s_primeprime'] = 10**(-3.0129 + 0.0123*(T - 273.13))
 
-        # # Modify the epsilon s primes by the Maxwell-Garnett
-        # epsilon_s_prime = self.cryosphere_model_df['epsilon_s_prime']
-        # epsilon_s_primeprime = self.cryosphere_model_df['epsilon_s_primeprime']
-        # eta_vac = self.cryosphere_model_df['Porosity (m^3/m^3)']
-        # epsilon_s = (epsilon_s_prime - 1j * epsilon_s_primeprime) * epsilon_0
-        # epsilon_m = epsilon_s + (3 * eta_vac * epsilon_s * (epsilon_0 - epsilon_s)) \
-        #     / ((2 * epsilon_s + epsilon_0) - eta_vac * (epsilon_0 - epsilon_s))
-
-        # self.cryosphere_model_df['epsilon_s_prime'] = np.real(epsilon_m / epsilon_0)
-        # self.cryosphere_model_df['epsilon_s_primeprime'] = -1 * np.imag(epsilon_m / epsilon_0)
-
         # Estimate the conductivity of the ice
         molar_mass_salt = (35.453 + 22.990) / 1000 # kg/mol
         molarity_salt = self.cryosphere_model_df['Salt fraction (kg/kg)'] / molar_mass_salt
