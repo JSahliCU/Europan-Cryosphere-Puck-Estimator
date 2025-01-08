@@ -61,8 +61,6 @@ def db_2_amperage(x):
 
 def sind(theta):
     """
-    Sine in degrees... since apparently its not in any python package????
-
     :param theta: input angle to sine
     :return: sine(theta)
     """
@@ -71,13 +69,10 @@ def sind(theta):
 
 def cosd(theta):
     """
-    Cosine in degrees... since apparently its not in any python package????
-
     :param theta: input angle to cosine
     :return: cos(theta)
     """
     return np.cos(np.deg2rad(theta))
-
 
 def cosnd_trunc(theta, alpha, n=1.0, replace=0.0):
     """
@@ -96,8 +91,6 @@ def cosnd_trunc(theta, alpha, n=1.0, replace=0.0):
 
 def tand(theta):
     """
-    Tangent in degrees... since apparently its not in any python package????
-
     :param theta: input angle to tangent
     :return: tan(theta)
     """
