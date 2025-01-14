@@ -164,10 +164,18 @@ def T_B_sub_jovian_point():
     for i in np.arange(theta_grid.size):
         theta = theta_grid.flatten()[i]
         phi = phi_grid.flatten()[i]
-        if theta >= 105 and theta <= 135:
-            if phi >= 180 and phi <= 360:
-                W_v[i] = 1 
-                W_h[i] = 1 
+        if theta <= 5: # directly overhead 
+            if phi >= 0 and phi <= 360:
+                W_v[i] = 0.5
+                W_h[i] = 0.5
+
+        if phi >= theta * (45 / 100) and phi <= theta * (55/100):
+            W_v[i] = 0.5
+            W_h[i] = 0.5
+
+        if phi >= theta * (45 / 100) + 180 and phi <= theta * (55/100) + 180:
+            W_v[i] = 0.5
+            W_h[i] = 0.5
 
     T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_gal_low_band)
 
@@ -182,10 +190,10 @@ def T_B_sub_jovian_point():
     for i in np.arange(theta_grid.size):
         theta = theta_grid.flatten()[i]
         phi = phi_grid.flatten()[i]
-        if theta >= 105 and theta <= 135:
-            if phi >= 180 and phi <= 360:
-                W_v[i] = 1 
-                W_h[i] = 1
+        if theta <= 5: # directly overhead 
+            if phi >= 0 and phi <= 360:
+                W_v[i] = 0.5
+                W_h[i] = 0.5
 
     T_Bv, T_Bh = deconvolve_Cecconi_T_A_to_T_B(ag, W_h, W_v, T_A_gal_high_band)
 
