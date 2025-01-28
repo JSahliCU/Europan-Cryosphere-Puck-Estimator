@@ -83,29 +83,27 @@ if __name__ == "__main__":
                                 'landing site':landing_site
                             })
 
-                    # With a limit of size Europas do the same
-                    max_D_cond = 10.4e3 + 5.8e3
-                    max_D_conv = 5.8e3 + 6.3e3
-                    for eta_vac in [0.1, 0.3]:
-                        for rho_salt in [0, 1e-3, 4.2e-2]:
+                            # With max Europas do the same
+                            max_D_cond = 10.4e3 + 5.8e3
+                            max_D_conv = 5.8e3 + 6.3e3
                             gen_d_file_suffix = f"{landing_site}{comm_bw}{scl_string}_{max_D_conv}_{max_D_conv}_txpwr{tx_pwr}_porosity{eta_vac}_saltfraction{rho_salt:.1e}".replace('.', 'p') 
                             dictionary_list.append({
-                                "eta_vac": eta_vac,  # porosity
-                                "rho_salt": rho_salt,  # salt fraction
-                                "D_cond": max_D_cond,  #m
-                                "D_phi": 0.43*max_D_cond,  #m
-                                "D_conv": max_D_conv,#m
-                                "T_u": default_T_u,  #K
-                                "T_l": default_T_l,  #K
-                                "T_conv": default_T_conv,  #K
-                                "H": default_H,  
-                                "sigma_ref": default_sigma_ref, 
-                                "file_suffix": gen_d_file_suffix,
-                                "use_shannon_channel_limit":scl,
-                                "comm_bw":comm_bw,
-                                'tx_pwr':tx_pwr,
-                                'landing site':landing_site
-                            })
+                                        "eta_vac": eta_vac,  # porosity
+                                        "rho_salt": rho_salt,  # salt fraction
+                                        "D_cond": max_D_cond,  #m
+                                        "D_phi": 0.43*max_D_cond,  #m
+                                        "D_conv": max_D_conv,#m
+                                        "T_u": default_T_u,  #K
+                                        "T_l": default_T_l,  #K
+                                        "T_conv": default_T_conv,  #K
+                                        "H": default_H,  
+                                        "sigma_ref": default_sigma_ref, 
+                                        "file_suffix": gen_d_file_suffix,
+                                        "use_shannon_channel_limit":scl,
+                                        "comm_bw":comm_bw,
+                                        'tx_pwr':tx_pwr,
+                                        'landing site':landing_site
+                                    })
 
     df = pd.DataFrame(dictionary_list)
     df['idx'] = df.index
