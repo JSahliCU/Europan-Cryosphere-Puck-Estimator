@@ -1,5 +1,7 @@
 # Europan_Cryosphere_Puck_Estimator
 
+doi:10.5281/zenodo.14834874
+
 ```
 conda env create -f environment.yml
 conda activate ecpe_py3p11p4
