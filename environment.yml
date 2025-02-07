@@ -1,0 +1,12 @@
+name: ecpe_py3p11p4
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11.4
+  - multiprocess
+  - ipykernel=6.29.5
+  - pandas=2.2.3
+  - numpy=2.2.2
+  - scipy=1.15.1
+  - matplotlib=3.10.0
+  
