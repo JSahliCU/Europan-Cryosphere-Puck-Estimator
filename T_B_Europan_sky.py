@@ -147,7 +147,7 @@ def T_B_sub_jovian_point():
     for i in np.arange(theta_grid.size):
         theta = theta_grid.flatten()[i]
         phi = phi_grid.flatten()[i]
-        if theta <= 6:
+        if theta <= 12:
             W_v[i] = 1 
             W_h[i] = 1 
 
@@ -258,7 +258,7 @@ def T_B_anti_jovian_point():
     for i in np.arange(theta_grid.size):
         theta = theta_grid.flatten()[i]
         phi = phi_grid.flatten()[i]
-        if theta >= 174:
+        if theta >= 168:
             W_v[i] = 1 
             W_h[i] = 1 
 
@@ -361,8 +361,8 @@ def T_B_anti_orbital_point():
     for i in np.arange(theta_grid.size):
         theta = theta_grid.flatten()[i]
         phi = phi_grid.flatten()[i]
-        if theta >= 84 and theta <= 96:
-            if phi >= 264 and phi <= 276:
+        if theta >= 78 and theta <= 102:
+            if phi >= 258 and phi <= 282:
                 W_v[i] = 1 
                 W_h[i] = 1 
 

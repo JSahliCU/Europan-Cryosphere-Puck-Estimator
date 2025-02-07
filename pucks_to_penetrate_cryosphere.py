@@ -241,7 +241,7 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
         'T_A Downwelling High Band (K)',
         UHF_M_symbols,
         True,
-        file_suffix,
+        'high_band_' + file_suffix,
         use_shannon_channel_limit
     )
 
@@ -258,7 +258,7 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
         'T_A Downwelling Low Band (K)',
         HF_M_symbols,
         True,
-        file_suffix,
+        'low_band_' + file_suffix,
         use_shannon_channel_limit
     )
     return uhf_pucks, uhf_pucks_cond, uhf_pucks_conv, hf_pucks, hf_pucks_cond, hf_pucks_conv
@@ -623,6 +623,10 @@ def estimate_puck_placement(
             else:
                 number_of_cond_pucks += 1
 
+            # Record Data
+            placement_depths.append(eim.cryosphere_model_df.loc[d]['Depth (m)'])
+            attenuations.append(attenuation)
+
             # Reset accumulating variables
             attenuation = 1
             prop_distance = 0
@@ -636,17 +640,21 @@ def estimate_puck_placement(
             upper_T_A_upwelling = lower_T_A_upwelling
             upper_T_A_downwelling = lower_T_A_downwelling
 
-            # Record Data
-            placement_depths.append(eim.cryosphere_model_df.loc[d]['Depth (m)'])
-            attenuations.append(attenuation)
-
     if record_puck_placement_data:
         recorded_data = pd.DataFrame({
             'Placement Depth (m)': placement_depths, 
             'Attenuation': attenuations})
         
-        recorded_data.to_csv('recorded_data_low_band' + file_suffix + '.csv')
+        recorded_data.to_csv('puck_placements_' + file_suffix + '.csv')
         eim.cryosphere_model_df.to_csv('cryosphere_model' + file_suffix + '.csv')
+
+    # Subtract off the surface puck placement
+    number_of_conv_pucks -= 1
+    number_of_pucks -= 1
+
+    # Subtract off the placement right at the ocean interface
+    number_of_cond_pucks -= 1
+    number_of_pucks -= 1
 
     return number_of_pucks, number_of_cond_pucks, number_of_conv_pucks
 
