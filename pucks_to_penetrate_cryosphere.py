@@ -266,10 +266,9 @@ def evaluate_number_of_pucks_on_arbitrary_europa(
 def calc_path_loss(omega, eta_vac, epsilon_s_prime, epsilon_s_primeprime, sigma_s):
     
     # Apply the Maxwell-Garnett Mixing Formula
-    epsilon_s = epsilon_s_prime - 1j * (epsilon_s_primeprime + sigma_s / (epsilon_0 * omega))
+    epsilon_s = epsilon_0 * (epsilon_s_prime - 1j * (epsilon_s_primeprime + sigma_s / (epsilon_0 * omega)))
     epsilon_m = epsilon_s + (3 * eta_vac * epsilon_s * (epsilon_0 - epsilon_s)) \
         / ((2 * epsilon_s + epsilon_0) - eta_vac * (epsilon_0 - epsilon_s))
-
     epsilon_s_prime = np.real(epsilon_m / epsilon_0)
     epsilon_s_primeprime = -1 * np.imag(epsilon_m / epsilon_0)
 
