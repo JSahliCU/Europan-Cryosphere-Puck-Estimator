@@ -1,5 +1,8 @@
 """
 Contains math functions useful for antenna engineering
+
+Copied from Theodore Prince https://orcid.org/0000-0002-7093-7582
+https://github.com/TheoPrinceColorado/antenna_toolbox
 """
 
 import numpy as np
