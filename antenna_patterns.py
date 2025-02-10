@@ -1,58 +1,64 @@
 import numpy as np
 from math_funcs import db_2_power, linear_fit
 
+
 class antenna_pattern:
     def __init__(
-        self, 
+        self,
         carrier_frequency,
-        ):
+    ):
         self.carrier_frequency = carrier_frequency
 
     def directivity(self, theta, phi, T):
         return 0.0
-    
+
     def radiation_efficiency(self, T):
         return 0.0
-    
+
     def matching_efficiency(self, T):
         return 0.0
 
     def realized_gain(self, T):
-        return self.directivity(0, 0, T) \
-            * self.radiation_efficiency(T) * self.matching_efficiency(T)
+        return (
+            self.directivity(0, 0, T)
+            * self.radiation_efficiency(T)
+            * self.matching_efficiency(T)
+        )
+
 
 class uhf_antenna(antenna_pattern):
     def __init__(self):
-        super().__init__(carrier_frequency = 413e6)
+        super().__init__(carrier_frequency=413e6)
 
     def directivity(self, theta, phi, T):
-        # Note this does not implement pulling from the pattern correctly, 
+        # Note this does not implement pulling from the pattern correctly,
         # but is more focused on temperature variation of the radiation pattern
         if theta == 0:
-            directivity_in_100K_ice = 4.64 # dB
-            directivity_in_273K_ice = 4.46 # dB
+            directivity_in_100K_ice = 4.64  # dB
+            directivity_in_273K_ice = 4.46  # dB
             m, b = linear_fit(
-                100, db_2_power(directivity_in_100K_ice), 
-                273, db_2_power(directivity_in_273K_ice))
-            return m * T + b # Units of power
+                100,
+                db_2_power(directivity_in_100K_ice),
+                273,
+                db_2_power(directivity_in_273K_ice),
+            )
+            return m * T + b  # Units of power
         elif theta == 180:
             return 0
         else:
             raise ValueError("Not defined theta angle passed")
 
     def radiation_efficiency(self, T):
-        rad_eff_in_273K_ice = 0.228 # dB
-        rad_eff_in_100K_ice = 0.223 # dB
-        m, b = linear_fit(
-            100, rad_eff_in_100K_ice, 
-            273, rad_eff_in_273K_ice)
+        rad_eff_in_273K_ice = 0.228  # dB
+        rad_eff_in_100K_ice = 0.223  # dB
+        m, b = linear_fit(100, rad_eff_in_100K_ice, 273, rad_eff_in_273K_ice)
         return m * T + b
 
     def matching_efficiency(self, T):
         return 0.952
-    
-    # ag = angle_grid(10, 10)
 
+    # ag = angle_grid(10, 10)
+    # fmt:off
     directivity_pattern_RHCP = np.array(
         [[2.81451268e+00, 2.81451268e+00, 2.81451268e+00, 2.81451268e+00,
         2.81451268e+00, 2.81451268e+00, 2.81451268e+00, 2.81451268e+00,
@@ -244,24 +250,25 @@ class uhf_antenna(antenna_pattern):
         1.60925918e-04, 1.60925918e-04, 1.60925918e-04, 1.60925918e-04,
         1.60925918e-04, 1.60925918e-04, 1.60925918e-04, 1.60925918e-04,
         1.60925918e-04]])
+    # fmt:on
 
 
 class hf_antenna(antenna_pattern):
     def __init__(self):
-        super().__init__(carrier_frequency =5.373e6)
+        super().__init__(carrier_frequency=5.373e6)
 
     def directivity(self, theta, phi, T):
         # Note this does not implement pulling from the pattern correctly
-        return  db_2_power(1.73) # Units of power
-    
+        return db_2_power(1.73)  # Units of power
+
     def radiation_efficiency(self, T):
         return 0.011
-    
+
     def matching_efficiency(self, T):
         return 1
-    
-    # ag = angle_grid(10, 10)
 
+    # ag = angle_grid(10, 10)
+    # fmt:off
     directivity_pattern_RHCP = np.array(
         [[1.50000000e+00, 1.50000000e+00, 1.50000000e+00, 1.50000000e+00,
                 1.50000000e+00, 1.50000000e+00, 1.50000000e+00, 1.50000000e+00,
@@ -453,3 +460,4 @@ class hf_antenna(antenna_pattern):
                 1.50000000e+00, 1.50000000e+00, 1.50000000e+00, 1.50000000e+00,
                 1.50000000e+00, 1.50000000e+00, 1.50000000e+00, 1.50000000e+00,
                 1.50000000e+00]])
+    # fmt:on

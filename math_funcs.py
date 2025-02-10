@@ -5,7 +5,6 @@ Copied from Theodore Prince https://orcid.org/0000-0002-7093-7582
 https://github.com/TheoPrinceColorado/antenna_toolbox
 """
 
-
 import numpy as np
 
 
@@ -18,6 +17,7 @@ def power_2_db(x):
     """
     return 10 * np.log10(np.abs(x))
 
+
 def voltage_2_db(x):
     """
     Converts voltage to dB.
@@ -26,6 +26,7 @@ def voltage_2_db(x):
     :return: dB
     """
     return power_2_db(x) * 2
+
 
 def amps_2_db(x):
     """
@@ -36,6 +37,7 @@ def amps_2_db(x):
     """
     return power_2_db(x) * 2
 
+
 def db_2_power(x):
     """
     Converts a magnitude in dB to magnitude in power
@@ -43,7 +45,8 @@ def db_2_power(x):
     :param x: magnitude in dB
     :return: magnitude in power
     """
-    return 10**(x/10)
+    return 10 ** (x / 10)
+
 
 def db_2_voltage(x):
     """
@@ -52,7 +55,8 @@ def db_2_voltage(x):
     :param x: magnitude in dB
     :return: magnitude in voltage
     """
-    return 10**(x/20)
+    return 10 ** (x / 20)
+
 
 def db_2_amperage(x):
     """
@@ -61,7 +65,8 @@ def db_2_amperage(x):
     :param x: magnitude in dB
     :return: magnitude in amperage
     """
-    return 10**(x/10)
+    return 10 ** (x / 10)
+
 
 def sind(theta):
     """
@@ -77,6 +82,7 @@ def cosd(theta):
     :return: cos(theta)
     """
     return np.cos(np.deg2rad(theta))
+
 
 def cosnd_trunc(theta, alpha, n=1.0, replace=0.0):
     """
@@ -150,7 +156,7 @@ def normalize_2_max(array, db=False):
     if db:
         return array - np.max(array)
     else:
-        return array/np.max(array)
+        return array / np.max(array)
 
 
 def v_pearson_r(X, y):
@@ -179,7 +185,7 @@ def rms(x):
     :param x: 1D data
     :return: root mean square of that data
     """
-    return np.sqrt(np.sum(x**2)/len(x))
+    return np.sqrt(np.sum(x**2) / len(x))
 
 
 def linear_fit(x1, y1, x2, y2):
@@ -192,6 +198,6 @@ def linear_fit(x1, y1, x2, y2):
     :param y2: y coordinate of point 2
     :return: slope (m) and y-intercept (b) of the line
     """
-    m = (y2 - y1)/(x2 - x1)     # compute slope
-    b = y1 - m*x1               # compute y-intercept
+    m = (y2 - y1) / (x2 - x1)  # compute slope
+    b = y1 - m * x1  # compute y-intercept
     return m, b
