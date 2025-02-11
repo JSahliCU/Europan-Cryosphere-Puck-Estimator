@@ -1,6 +1,6 @@
 # Europan_Cryosphere_Puck_Estimator
 
-doi:10.5281/zenodo.14834874
+doi:10.5281/zenodo.14834873
 
 ```
 conda env create -f environment.yml
